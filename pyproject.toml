@@ -61,6 +61,7 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
 pretty = true
+explicit_package_bases = true
 
 plugins = ['pydantic.mypy', 'sqlalchemy.ext.mypy.plugin']
 
