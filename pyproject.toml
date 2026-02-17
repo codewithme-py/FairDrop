@@ -42,6 +42,9 @@ select = ['E', 'W', 'F', 'I', 'UP', 'C4']
 [tool.ruff.format]
 quote-style = 'single'
 
+[tool.ruff.lint.per-file-ignores]
+'migrations/env.py' = ['F401']
+
 [tool.pytest.ini_options]
 testpaths = ['tests']
 python_files = ['test_*.py']
