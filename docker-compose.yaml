@@ -8,7 +8,7 @@ volumes:
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: fairdrop-${DB_HOST}
+    container_name: ${DB_HOST}
     healthcheck:
       test: ['CMD', 'pg_isready', '-d', '${POSTGRES_DB}', '-U', '${POSTGRES_USER}']
       interval: 10s
@@ -23,7 +23,7 @@ services:
 
   redis:
     image: redis/redis-stack-server:latest
-    container_name: fairdrop-${REDIS_HOST}
+    container_name: ${REDIS_HOST}
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -38,7 +38,7 @@ services:
       
   s3:
     image: minio/minio:latest
-    container_name: fairdrop-${S3_HOST}
+    container_name: ${S3_HOST}
     command: server /data --console-address ':9001'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -74,7 +74,7 @@ services:
       
   gateway:
     image: nginx:alpine
-    container_name: fairdrop-${GATEWAY_HOST}
+    container_name: ${GATEWAY_HOST}
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:80/health']
       interval: 10s
