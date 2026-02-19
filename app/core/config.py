@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     s3_port: int = Field(alias='S3_PORT')
     minio_root_user: str = Field(alias='MINIO_ROOT_USER')
     minio_root_password: str = Field(alias='MINIO_ROOT_PASSWORD')
+    secret_key: str = Field(alias='SECRET_KEY')
     debug_mode: bool = Field(default=False, alias='DEBUG_MODE')
 
     @computed_field
