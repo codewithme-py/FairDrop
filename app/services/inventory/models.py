@@ -9,6 +9,9 @@ from sqlalchemy.types import DateTime, Integer, String, Text
 
 from app.core.database import Base
 
+DECIMAL_PRECISION = 10
+DECIMAL_SCALE = 2
+
 
 class Product(Base):
     __tablename__ = 'products'
@@ -17,7 +20,9 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     price: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 2), nullable=True, default=Decimal('0.10')
+        Numeric(DECIMAL_PRECISION, DECIMAL_SCALE),
+        nullable=True,
+        default=Decimal('0.10'),
     )
     qty_available: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

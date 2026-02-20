@@ -5,12 +5,15 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
+POOL_SIZE = 10
+MAX_OVERFLOW = 20
+
 engine = create_async_engine(
     url=str(settings.database_url),
     echo=settings.debug_mode,
     future=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=POOL_SIZE,
+    max_overflow=MAX_OVERFLOW,
 )
 
 async_session_factory = async_sessionmaker(

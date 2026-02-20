@@ -8,7 +8,7 @@ from app.core.database import get_session
 from app.core.exceptions import CredentialsError
 from app.core.security import create_access_token
 from app.services.user.models import User
-from app.services.user.schemas import Token, UserCreate, UserRead
+from app.services.user.schemas import RefreshTokenRequest, Token, UserCreate, UserRead
 from app.services.user.service import UserService
 from app.shared.deps import get_current_user
 
@@ -34,7 +34,23 @@ async def login(
     if not user:
         raise CredentialsError()
     access_token = create_access_token(data={'sub': str(user.email)})
-    return Token(access_token=access_token, token_type='bearer')
+    refresh_token = await UserService.create_refresh_token(session, user.id)
+    return Token(
+        access_token=access_token, token_type='bearer', refresh_token=refresh_token
+    )
+
+
+@router_v1.post('/auth/refresh')
+async def refresh_token(
+    request_data: RefreshTokenRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Token:
+    user = await UserService.refresh_access_token(session, request_data.refresh_token)
+    access_token = create_access_token(data={'sub': str(user.email)})
+    refresh_token = await UserService.create_refresh_token(session, user.id)
+    return Token(
+        access_token=access_token, token_type='bearer', refresh_token=refresh_token
+    )
 
 
 @router_v1.get('/users/me')
