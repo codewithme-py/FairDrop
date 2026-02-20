@@ -16,11 +16,14 @@ class Settings(BaseSettings):
     s3_port: int = Field(alias='S3_PORT')
     minio_root_user: str = Field(alias='MINIO_ROOT_USER')
     minio_root_password: str = Field(alias='MINIO_ROOT_PASSWORD')
+    pool_size: int = Field(alias='POOL_SIZE')
+    max_overflow: int = Field(alias='MAX_OVERFLOW')
     jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')
-    access_token_expire_minutes: int = Field(
-        default=30, alias='ACCESS_TOKEN_EXPIRE_MINUTES'
-    )
-    refresh_token_expire_days: int = Field(default=7, alias='REFRESH_TOKEN_EXPIRE_DAYS')
+    access_token_expire_minutes: int = Field(alias='ACCESS_TOKEN_EXPIRE_MINUTES')
+    refresh_token_expire_days: int = Field(alias='REFRESH_TOKEN_EXPIRE_DAYS')
+    rate_limit_user_rps: int = Field(alias='RATE_LIMIT_USER_RPS')
+    rate_limit_global_rps: int = Field(alias='RATE_LIMIT_GLOBAL_RPS')
+    rate_limit_ttl_seconds: int = Field(alias='RATE_LIMIT_TTL_SECONDS')
     secret_key: str = Field(alias='SECRET_KEY')
     debug_mode: bool = Field(default=False, alias='DEBUG_MODE')
 
