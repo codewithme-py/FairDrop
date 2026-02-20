@@ -10,6 +10,9 @@ from sqlalchemy.types import DateTime, Integer, String
 
 from app.core.database import Base
 
+DECIMAL_PRECISION = 10
+DECIMAL_SCALE = 2
+
 
 class OrderStatus(StrEnum):
     PENDING = 'pending'
@@ -27,7 +30,9 @@ class Order(Base):
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING
     )
-    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(DECIMAL_PRECISION, DECIMAL_SCALE), nullable=False
+    )
     shipping_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -47,7 +52,9 @@ class OrderItem(Base):
     product_id: Mapped[UUID] = mapped_column(ForeignKey('products.id'), nullable=False)
     product_name: Mapped[str] = mapped_column(String(), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    price: Mapped[Decimal] = mapped_column(
+        Numeric(DECIMAL_PRECISION, DECIMAL_SCALE), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
