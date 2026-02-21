@@ -7,8 +7,12 @@ from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.core.config import settings
 
-def idempotent(ttl_seconds: int = 86400) -> Callable[[Callable], Callable]:
+
+def idempotent(
+    ttl_seconds: int = settings.idempotent_key_lifetime_sec,
+) -> Callable[[Callable], Callable]:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Response | Any:

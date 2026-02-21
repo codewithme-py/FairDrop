@@ -9,7 +9,9 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.lua_scripts import RATE_LIMIT_LUA_SCRIPT
 from app.core.setup import setup_exception_handlers
-from app.services.user.routes import router_v1
+from app.services.inventory.routes import router_v1 as inventory_router_v1
+from app.services.orders.routes import router_v1 as order_router_v1
+from app.services.user.routes import router_v1 as user_router_v1
 
 setup_logging()
 logger = structlog.get_logger(__name__)
@@ -38,7 +40,9 @@ app = FastAPI(
 
 setup_exception_handlers(app)
 
-app.include_router(router_v1, prefix='/api/v1', tags=['Users'])
+app.include_router(user_router_v1, prefix='/api/v1', tags=['Users'])
+app.include_router(order_router_v1, prefix='/api/v1', tags=['Orders'])
+app.include_router(inventory_router_v1, prefix='/api/v1', tags=['Inventory'])
 
 
 @app.get('/health')

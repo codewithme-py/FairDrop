@@ -20,6 +20,7 @@ class OrderStatus(StrEnum):
     SHIPPED = 'shipped'
     CANCELLED = 'cancelled'
     FAILED = 'failed'
+    COMPLETED = 'completed'
 
 
 class Order(Base):

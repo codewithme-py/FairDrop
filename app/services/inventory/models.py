@@ -19,9 +19,9 @@ class Product(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    price: Mapped[Decimal | None] = mapped_column(
+    price: Mapped[Decimal] = mapped_column(
         Numeric(DECIMAL_PRECISION, DECIMAL_SCALE),
-        nullable=True,
+        nullable=False,
         default=Decimal('0.10'),
     )
     qty_available: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
