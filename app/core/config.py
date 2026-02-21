@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     rate_limit_user_rps: int = Field(alias='RATE_LIMIT_USER_RPS')
     rate_limit_global_rps: int = Field(alias='RATE_LIMIT_GLOBAL_RPS')
     rate_limit_ttl_seconds: int = Field(alias='RATE_LIMIT_TTL_SECONDS')
+    idempotent_key_lifetime_sec: int = Field(alias='IDEMPOTENT_KEY_LIFETIME_SEC')
+    reserve_timeout_minutes: int = Field(alias='RESERVE_TIMEOUT_MINUTES')
     secret_key: str = Field(alias='SECRET_KEY')
     debug_mode: bool = Field(default=False, alias='DEBUG_MODE')
 
