@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.main import logger
 from app.services.inventory.models import Product, Reservation
-from app.services.orders.models import Order, OrderStatus
+from app.services.orders.internal import cancel_order_by_system
+from app.services.orders.models import OrderStatus
 
 
 async def release_expired_reservations(ctx: dict) -> None:
@@ -38,13 +39,6 @@ async def release_expired_reservations(ctx: dict) -> None:
                 product.qty_available += reservation.qty_reserved
             reservation.status = OrderStatus.EXPIRED
             if reservation.order_id is not None:
-                order_result = await session.execute(
-                    select(Order)
-                    .with_for_update()
-                    .where(Order.id == reservation.order_id)
-                )
-                order = order_result.scalar_one_or_none()
-                if order:
-                    order.status = OrderStatus.CANCELLED
+                await cancel_order_by_system(session, reservation.order_id)
             await session.commit()
             logger.info(f'Released reservation {res_id}')
