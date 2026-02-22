@@ -21,6 +21,7 @@ class OrderStatus(StrEnum):
     CANCELLED = 'cancelled'
     FAILED = 'failed'
     COMPLETED = 'completed'
+    EXPIRED = 'expired'
 
 
 class Order(Base):

@@ -19,8 +19,7 @@ logger = structlog.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    redis_url = f'redis://{settings.redis_host}:{settings.redis_port}'
-    client = Redis.from_url(redis_url, decode_responses=True, encoding='utf-8')
+    client = Redis.from_url(settings.redis_url, decode_responses=True, encoding='utf-8')
     app.state.redis = client
     app.state.rate_limit_script = client.register_script(RATE_LIMIT_LUA_SCRIPT)
     try:
