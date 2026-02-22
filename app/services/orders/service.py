@@ -5,6 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.services.inventory.internal import (
+    cancel_reservation_by_order_and_return_stock,
+    mark_reservation_by_order_as_completed,
+)
 from app.services.inventory.models import Product, Reservation
 from app.services.orders.models import Order, OrderItem, OrderStatus
 from app.services.orders.schemas import OrderCreate
@@ -89,11 +93,22 @@ async def confirm_order_payment(
     order_id: UUID,
     user_id: UUID,
 ) -> Order:
-    order, reservation = await _get_locked_order_and_reservation(
-        session, order_id, user_id
+    order_result = await session.execute(
+        select(Order)
+        .with_for_update()
+        .where(
+            Order.id == order_id,
+            Order.user_id == user_id,
+        )
     )
+    order = order_result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError
+    if order.status != OrderStatus.PENDING:
+        raise ConflictError
+
     order.status = OrderStatus.PAID
-    reservation.status = OrderStatus.COMPLETED
+    await mark_reservation_by_order_as_completed(session, order_id)
     await session.commit()
     return order
 
@@ -103,16 +118,21 @@ async def cancel_order(
     order_id: UUID,
     user_id: UUID,
 ) -> Order:
-    order, reservation = await _get_locked_order_and_reservation(
-        session, order_id, user_id
+    order_result = await session.execute(
+        select(Order)
+        .with_for_update()
+        .where(
+            Order.id == order_id,
+            Order.user_id == user_id,
+        )
     )
-    product_rollback = await session.execute(
-        select(Product).with_for_update().where(Product.id == reservation.product_id)
-    )
-    product = product_rollback.scalar_one_or_none()
-    if product:
-        product.qty_available += reservation.qty_reserved
+    order = order_result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError
+    if order.status != OrderStatus.PENDING:
+        raise ConflictError
+
     order.status = OrderStatus.CANCELLED
-    reservation.status = OrderStatus.CANCELLED
+    await cancel_reservation_by_order_and_return_stock(session, order_id)
     await session.commit()
     return order
