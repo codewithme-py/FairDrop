@@ -66,3 +66,14 @@ async def cancel_reservation_by_order_and_return_stock(
     if product:
         product.qty_available += reservation.qty_reserved
     reservation.status = OrderStatus.CANCELLED
+
+
+async def ensure_product_exists(
+    session: AsyncSession,
+    product_id: UUID,
+) -> None:
+    prod_result = await session.execute(
+        select(Product.id).where(Product.id == product_id)
+    )
+    if prod_result.scalar_one_or_none() is None:
+        raise NotFoundError
