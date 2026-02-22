@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     s3_port: int = Field(alias='S3_PORT')
     minio_root_user: str = Field(alias='MINIO_ROOT_USER')
     minio_root_password: str = Field(alias='MINIO_ROOT_PASSWORD')
+    minio_bucket_name: str = Field(alias='MINIO_BUCKET_NAME')
+    minio_url: str = Field(alias='MINIO_URL')
     pool_size: int = Field(alias='POOL_SIZE')
     max_overflow: int = Field(alias='MAX_OVERFLOW')
     jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')
@@ -28,6 +30,9 @@ class Settings(BaseSettings):
     rate_limit_ttl_seconds: int = Field(alias='RATE_LIMIT_TTL_SECONDS')
     idempotent_key_lifetime_sec: int = Field(alias='IDEMPOTENT_KEY_LIFETIME_SEC')
     reserve_timeout_minutes: int = Field(alias='RESERVE_TIMEOUT_MINUTES')
+    presigned_url_expire_seconds: int = Field(alias='PRESIGNED_URL_EXPIRE_SECONDS')
+    min_file_size_bytes: int = Field(alias='MIN_FILE_SIZE_BYTES')
+    max_file_size_bytes: int = Field(alias='MAX_FILE_SIZE_BYTES')
     secret_key: str = Field(alias='SECRET_KEY')
     debug_mode: bool = Field(default=False, alias='DEBUG_MODE')
 

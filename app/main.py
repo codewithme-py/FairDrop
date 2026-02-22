@@ -8,8 +8,10 @@ from redis.asyncio import Redis
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.lua_scripts import RATE_LIMIT_LUA_SCRIPT
+from app.core.s3 import init_s3_bucket
 from app.core.setup import setup_exception_handlers
 from app.services.inventory.routes import router_v1 as inventory_router_v1
+from app.services.media.routes import router_v1 as media_router_v1
 from app.services.orders.routes import router_v1 as order_router_v1
 from app.services.user.routes import router_v1 as user_router_v1
 
@@ -22,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     client = Redis.from_url(settings.redis_url, decode_responses=True, encoding='utf-8')
     app.state.redis = client
     app.state.rate_limit_script = client.register_script(RATE_LIMIT_LUA_SCRIPT)
+    await init_s3_bucket()
     try:
         logger.info('redis connected')
         yield
@@ -42,6 +45,7 @@ setup_exception_handlers(app)
 app.include_router(user_router_v1, prefix='/api/v1', tags=['Users'])
 app.include_router(order_router_v1, prefix='/api/v1', tags=['Orders'])
 app.include_router(inventory_router_v1, prefix='/api/v1', tags=['Inventory'])
+app.include_router(media_router_v1, prefix='/api/v1/media', tags=['Media'])
 
 
 @app.get('/health')

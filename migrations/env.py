@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from app.core.database import Base
 from app.services.inventory.models import Product, Reservation
+from app.services.media.models import ProductImage
 from app.services.orders.models import Order, OrderItem
 from app.services.user.models import User
 
