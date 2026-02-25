@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
 
 from app.core.config import settings
@@ -40,12 +41,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+Instrumentator().instrument(app).expose(app)
+
 setup_exception_handlers(app)
 
 app.include_router(user_router_v1, prefix='/api/v1', tags=['Users'])
 app.include_router(order_router_v1, prefix='/api/v1', tags=['Orders'])
 app.include_router(inventory_router_v1, prefix='/api/v1', tags=['Inventory'])
-app.include_router(media_router_v1, prefix='/api/v1/media', tags=['Media'])
+app.include_router(media_router_v1, prefix='/api/v1', tags=['Media'])
 
 
 @app.get('/health')
