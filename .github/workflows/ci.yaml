@@ -9,13 +9,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+# =====
+# Hardcode will be replaced with secrets GitHub Repo
+# =====
     services:
       postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: fairdrop_user
-          POSTGRES_PASSWORD: fairdrop_pass
+          POSTGRES_PASSWORD: fairdrop_password
           POSTGRES_DB: fairdrop_db
         ports:
           - 5432:5432
@@ -27,7 +29,9 @@ jobs:
 
     env:
       DB_HOST: localhost  # override docker container name from .env
-
+# =====
+# Hardcode will be replaced with secrets GitHub Repo
+# =====
     steps:
       - name: Checkout
         uses: actions/checkout@v4
