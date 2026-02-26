@@ -23,7 +23,7 @@ class UserService:
         )
         if result.scalar_one_or_none():
             raise UserAlreadyExists
-        hashed_password = get_password_hash(user_create.password)
+        hashed_password = await get_password_hash(user_create.password)
         user = User(email=user_create.email, password_hash=hashed_password)
         session.add(user)
         await session.commit()
@@ -36,7 +36,7 @@ class UserService:
     ) -> User | None:
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
-        if not user or not verify_password(password, user.password_hash):
+        if not user or not await verify_password(password, user.password_hash):
             return None
         return user
 

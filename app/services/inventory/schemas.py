@@ -14,6 +14,6 @@ class ReservationResponse(BaseModel):
     id: UUID
     product_id: UUID
     user_id: UUID
-    quantity: int
+    quantity: int = Field(validation_alias='qty_reserved')
     status: str
     expires_at: datetime
