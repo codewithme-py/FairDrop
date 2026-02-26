@@ -17,4 +17,3 @@ wheels/
 .vscode/
 
 # Local env
-.env

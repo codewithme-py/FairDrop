@@ -9,13 +9,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: fairdrop_user
+          POSTGRES_PASSWORD: fairdrop_pass
+          POSTGRES_DB: fairdrop_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost  # override docker container name from .env
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up UV (without pip)
         uses: astral-sh/setup-uv@v5
-        with: 
+        with:
           enable-cache: true
 
       - name: Install dependencies
