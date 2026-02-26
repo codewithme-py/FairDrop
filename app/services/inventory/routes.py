@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.services.inventory.models import Reservation
 from app.services.inventory.rate_limit import check_rate_limit
 from app.services.inventory.schemas import ReservationCreate, ReservationResponse
 from app.services.inventory.service import reserve_items
@@ -21,15 +20,16 @@ async def reservation_data(
     x_idempotency_key: str = Header(...),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> Reservation:
+) -> ReservationResponse:
     await check_rate_limit(
         rate_limit_script=request.app.state.rate_limit_script,
         user_id=str(current_user.id),
         item_id=str(reservation_data.product_id),
     )
-    return await reserve_items(
+    result = await reserve_items(
         session=session,
         user_id=current_user.id,
         idempotency_key=x_idempotency_key,
         reservation_data=reservation_data,
     )
+    return ReservationResponse.model_validate(result)

@@ -11,6 +11,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ${DB_HOST}
+    command: postgres -c max_connections=300 # switch to pgbouncer available
     healthcheck:
       test: ['CMD', 'pg_isready', '-d', '${POSTGRES_DB}', '-U', '${POSTGRES_USER}']
       interval: 10s
