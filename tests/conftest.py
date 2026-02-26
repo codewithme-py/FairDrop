@@ -1,7 +1,4 @@
 import os
-
-os.environ.setdefault('DB_HOST', 'localhost')
-
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
@@ -13,13 +10,31 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+import app.services.inventory.models  # noqa: F401
+import app.services.orders.models  # noqa: F401
+import app.services.user.models  # noqa: F401
 from app.core.config import settings
+from app.core.database import Base
+
+
+def _test_db_url() -> str:
+    """
+    Build test DB URL with DB_HOST override.
+    settings.database_url may contain docker container name (db_fairdrop).
+    Tests run locally or in CI where postgres is on localhost.
+    """
+    host = os.environ.get('DB_HOST', 'localhost')
+    return (
+        f'postgresql+asyncpg://{settings.db_user}:{settings.db_password}'
+        f'@{host}:{settings.db_port}/{settings.db_name}'
+    )
 
 
 @pytest_asyncio.fixture
 async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
-    url = str(settings.database_url)
-    engine = create_async_engine(url, echo=True, poolclass=NullPool)
+    engine = create_async_engine(_test_db_url(), echo=True, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
 
