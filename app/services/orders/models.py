@@ -4,7 +4,7 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime, Integer, String
 
@@ -41,6 +41,10 @@ class Order(Base):
         DateTime, server_default=func.now(), onupdate=func.now()
     )
 
+    items: Mapped[list['OrderItem']] = relationship(
+        'OrderItem', back_populates='order', cascade='all, delete-orphan'
+    )
+
     __table_args__ = (
         CheckConstraint('total_amount >= 0', name='check_total_amount_non_negative'),
     )
@@ -52,6 +56,8 @@ class OrderItem(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     order_id: Mapped[UUID] = mapped_column(ForeignKey('orders.id'), nullable=False)
     product_id: Mapped[UUID] = mapped_column(ForeignKey('products.id'), nullable=False)
+
+    order: Mapped['Order'] = relationship('Order', back_populates='items')
     product_name: Mapped[str] = mapped_column(String(), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[Decimal] = mapped_column(

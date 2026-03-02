@@ -60,6 +60,7 @@ async def create_order_from_reservation(
     session.add(create_order_item)
     reservation.order_id = create_order.id
     await session.commit()
+    await session.refresh(create_order, attribute_names=['items'])
     return create_order
 
 

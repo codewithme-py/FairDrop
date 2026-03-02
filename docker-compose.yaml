@@ -95,9 +95,9 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus_fairdrop
+    container_name: ${PROMETHEUS_HOST}
     ports:
-      - '9090:9090'
+      - '${PROMETHEUS_PORT}:9090'
     volumes:
       - ./infrastructure/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
       - fairdrop-prometheus:/prometheus
@@ -106,9 +106,9 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana_fairdrop
+    container_name: ${GRAFANA_HOST}
     ports:
-      - '3000:3000'
+      - '${GRAFANA_PORT}:3000'
     volumes:
       - fairdrop-grafana:/var/lib/grafana
     depends_on:
