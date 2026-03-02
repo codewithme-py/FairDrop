@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -44,7 +45,8 @@ def idempotent(
             if isinstance(response, BaseModel):
                 json_str_to_cache = response.model_dump_json()
             else:
-                json_str_to_cache = json.dumps(response)
+                json_data = jsonable_encoder(response)
+                json_str_to_cache = json.dumps(json_data)
             await redis_client.setex(redis_key, ttl_seconds, json_str_to_cache)
             return response
 

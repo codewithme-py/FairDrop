@@ -2,22 +2,22 @@ from http import HTTPStatus
 
 from locust import between, task
 
-from locust_base import BaseUser
+from load_tests.locust_base import BaseUser
 
-TARGET_PRODUCT_ID = '5995fa75-07c7-4b55-82b7-6bfbb52948b8'
+OVERSELL_PRODUCT_ID = '3fe44185-589a-4703-b640-40df8d7ea67f'
 
 
-class HighLoadUser(BaseUser):
-    wait_time = between(0.5, 2.0)
+class OversellTestUser(BaseUser):
+    wait_time = between(0.1, 0.5)
 
     @task
-    def reserve_product(self) -> None:
+    def reserve_oversell_product(self) -> None:
         if not self.access_token:
             return
         with self.client.post(
             '/api/v1/inventory/reserve',
             headers=self.auth_headers,
-            json={'product_id': TARGET_PRODUCT_ID, 'quantity': 1},
+            json={'product_id': OVERSELL_PRODUCT_ID, 'quantity': 1},
             catch_response=True,
         ) as reserve_res:
             if reserve_res.status_code not in (

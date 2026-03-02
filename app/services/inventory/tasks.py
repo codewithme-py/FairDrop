@@ -27,7 +27,7 @@ async def release_expired_reservations(ctx: dict) -> None:
                 select(Reservation).with_for_update().where(Reservation.id == res_id)
             )
             reservation = res_result.scalar_one_or_none()
-            if reservation is None:
+            if reservation is None or reservation.status != OrderStatus.PENDING:
                 continue
             prod_result = await session.execute(
                 select(Product)
