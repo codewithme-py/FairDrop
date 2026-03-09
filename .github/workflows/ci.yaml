@@ -27,8 +27,15 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    env:
-      DB_HOST: localhost  # override docker container name from .env
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd 'redis-cli ping'
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 # =====
 # Hardcode will be replaced with secrets GitHub Repo
 # =====
