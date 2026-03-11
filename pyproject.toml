@@ -51,6 +51,7 @@ quote-style = 'single'
 'migrations/env.py' = ['F401']
 
 [tool.pytest.ini_options]
+addopts = '-v --asyncio-mode=auto --cov=app --cov-report=term-missing'
 testpaths = ['tests']
 python_files = ['test_*.py']
 python_classes = ['Test*']
