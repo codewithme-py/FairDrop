@@ -56,6 +56,9 @@ services:
       - fairdrop-s3:/data
 
   app:
+    read_only: true
+    tmpfs:
+      - /tmp
     build: .
     depends_on:
       postgres:
