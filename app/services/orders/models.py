@@ -28,9 +28,11 @@ class Order(Base):
     __tablename__ = 'orders'
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey('users.id'), nullable=False, index=True
+    )
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING
+        Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING, index=True
     )
     total_amount: Mapped[Decimal] = mapped_column(
         Numeric(DECIMAL_PRECISION, DECIMAL_SCALE), nullable=False
@@ -54,8 +56,12 @@ class OrderItem(Base):
     __tablename__ = 'order_items'
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    order_id: Mapped[UUID] = mapped_column(ForeignKey('orders.id'), nullable=False)
-    product_id: Mapped[UUID] = mapped_column(ForeignKey('products.id'), nullable=False)
+    order_id: Mapped[UUID] = mapped_column(
+        ForeignKey('orders.id'), nullable=False, index=True
+    )
+    product_id: Mapped[UUID] = mapped_column(
+        ForeignKey('products.id'), nullable=False, index=True
+    )
 
     order: Mapped['Order'] = relationship('Order', back_populates='items')
     product_name: Mapped[str] = mapped_column(String(), nullable=False)

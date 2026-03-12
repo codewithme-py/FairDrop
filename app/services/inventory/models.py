@@ -43,17 +43,21 @@ class Reservation(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     qty_reserved: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), nullable=False)
-    product_id: Mapped[UUID] = mapped_column(ForeignKey('products.id'), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey('users.id'), nullable=False, index=True
+    )
+    product_id: Mapped[UUID] = mapped_column(
+        ForeignKey('products.id'), nullable=False, index=True
+    )
     status: Mapped[str] = mapped_column(
         String(), nullable=False, default='pending', index=True
     )
     idempotency_key: Mapped[str] = mapped_column(String(), nullable=False, unique=True)
     order_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey('orders.id'), nullable=True
+        ForeignKey('orders.id'), nullable=True, index=True
     )
     expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True

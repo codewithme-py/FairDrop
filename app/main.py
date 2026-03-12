@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
 
@@ -39,6 +40,7 @@ app = FastAPI(
     description='FairDrop API HL B2B Dropshipping Platform',
     version='0.1.0',
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,
 )
 
 Instrumentator().instrument(app).expose(app)

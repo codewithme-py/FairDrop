@@ -2,6 +2,7 @@ import logging
 import sys
 from typing import Any
 
+import orjson
 import structlog
 
 from app.core.config import settings
@@ -18,7 +19,7 @@ def setup_logging() -> None:
         processors.append(structlog.dev.ConsoleRenderer())
     else:
         processors.append(structlog.processors.dict_tracebacks)
-        processors.append(structlog.processors.JSONRenderer())
+        processors.append(structlog.processors.JSONRenderer(serializer=orjson.dumps))
     structlog.configure(
         processors=processors, logger_factory=structlog.stdlib.LoggerFactory()
     )

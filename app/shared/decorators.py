@@ -1,11 +1,10 @@
-import json
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
+import orjson
 from fastapi import HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -39,14 +38,18 @@ def idempotent(
             redis_key = f'idempotency:{idempotency_key}'
             cached_response = await redis_client.get(redis_key)
             if cached_response:
-                data = json.loads(cached_response)
-                return JSONResponse(content=data, status_code=status.HTTP_200_OK)
+                data = orjson.loads(cached_response)
+                return Response(
+                    content=orjson.dumps(data),
+                    status_code=status.HTTP_200_OK,
+                    media_type='application/json',
+                )
             response = await func(*args, **kwargs)
             if isinstance(response, BaseModel):
                 json_str_to_cache = response.model_dump_json()
             else:
                 json_data = jsonable_encoder(response)
-                json_str_to_cache = json.dumps(json_data)
+                json_str_to_cache = orjson.dumps(json_data).decode()
             await redis_client.setex(redis_key, ttl_seconds, json_str_to_cache)
             return response
 
