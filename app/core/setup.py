@@ -5,6 +5,7 @@ from .exception_handlers import (
     credentials_error_handler,
     insufficient_inventory_error_handler,
     not_found_error_handler,
+    permission_denied_handler,
     user_already_exists_handler,
 )
 from .exceptions import (
@@ -12,6 +13,7 @@ from .exceptions import (
     CredentialsError,
     InsufficientInventoryError,
     NotFoundError,
+    PermissionDeniedError,
     UserAlreadyExists,
 )
 
@@ -24,4 +26,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         InsufficientInventoryError,
         insufficient_inventory_error_handler,  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(
+        PermissionDeniedError,
+        permission_denied_handler,  # type: ignore[arg-type]
     )

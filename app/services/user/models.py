@@ -1,6 +1,8 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -11,6 +13,15 @@ from app.core.database import Base
 EMAIL_MAX_LENGTH = 255
 
 
+class UserRole(StrEnum):
+    ADMIN = 'ADMIN'
+    MODERATOR = 'MODERATOR'
+    USER = 'USER'
+    USER_B2B = 'USER_B2B'
+    SELLER = 'SELLER'
+    SELLER_B2B = 'SELLER_B2B'
+
+
 class User(Base):
     __tablename__ = 'users'
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -19,7 +30,8 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), default=UserRole.USER)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     refresh_tokens: Mapped[list['RefreshToken']] = relationship(back_populates='user')
 

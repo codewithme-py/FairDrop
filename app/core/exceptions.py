@@ -37,3 +37,10 @@ class InsufficientInventoryError(AppError):
 
     def __init__(self, message: str = 'Insufficient inventory'):
         super().__init__(message=message)
+
+
+class PermissionDeniedError(AppError):
+    """Permission denied."""
+
+    def __init__(self, message: str = 'Permission denied'):
+        super().__init__(message=message)

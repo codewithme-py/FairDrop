@@ -1,8 +1,10 @@
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, ForeignKey, Numeric
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime, Integer, String, Text
@@ -13,10 +15,19 @@ DECIMAL_PRECISION = 10
 DECIMAL_SCALE = 2
 
 
+class ProductStatus(StrEnum):
+    DRAFT = 'DRAFT'
+    ACTIVE = 'ACTIVE'
+    ARCHIVED = 'ARCHIVED'
+
+
 class Product(Base):
     __tablename__ = 'products'
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey('users.id'), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     price: Mapped[Decimal] = mapped_column(
@@ -30,6 +41,9 @@ class Product(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    status: Mapped[ProductStatus] = mapped_column(
+        SQLEnum(ProductStatus), nullable=False, default=ProductStatus.DRAFT
     )
 
     __table_args__ = (

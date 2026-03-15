@@ -6,6 +6,7 @@ from .exceptions import (
     CredentialsError,
     InsufficientInventoryError,
     NotFoundError,
+    PermissionDeniedError,
     UserAlreadyExists,
 )
 
@@ -55,4 +56,13 @@ async def conflict_error_handler(request: Request, exc: ConflictError) -> JSONRe
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={'detail': str(exc) or CONFLICT_MESSAGE},
+    )
+
+
+async def permission_denied_handler(
+    request: Request, exc: PermissionDeniedError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={'detail': str(exc) or 'Permission denied'},
     )
