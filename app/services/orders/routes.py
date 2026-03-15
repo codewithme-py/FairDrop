@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request
@@ -6,11 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.services.orders.models import Order
 from app.services.orders.schemas import OrderCreate, OrderResponse
-from app.services.orders.service import (
-    cancel_order,
-    confirm_order_payment,
-    create_order_from_reservation,
-)
+from app.services.orders.service import OrderService
 from app.services.user.models import User
 from app.shared.decorators import idempotent
 from app.shared.deps import get_current_user
@@ -23,13 +20,13 @@ router_v1 = APIRouter(prefix='/orders', tags=['Orders'])
 async def create_order_endpoint(
     request: Request,
     order_data: OrderCreate,
-    x_idempotency_key: str = Header(...),
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    x_idempotency_key: Annotated[str, Header(...)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> Order:
-    return await create_order_from_reservation(
+    return await OrderService.create_order_from_reservation(
         session=session,
-        user_id=current_user.id,
+        current_user=current_user,
         order_data=order_data,
     )
 
@@ -39,14 +36,14 @@ async def create_order_endpoint(
 async def confirm_order_payment_endpoint(
     request: Request,
     order_id: UUID,
-    x_idempotency_key: str = Header(...),
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    x_idempotency_key: Annotated[str, Header(...)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> Order:
-    return await confirm_order_payment(
+    return await OrderService.confirm_order_payment(
         session=session,
         order_id=order_id,
-        user_id=current_user.id,
+        current_user=current_user,
     )
 
 
@@ -55,12 +52,12 @@ async def confirm_order_payment_endpoint(
 async def cancel_order_endpoint(
     request: Request,
     order_id: UUID,
-    x_idempotency_key: str = Header(...),
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    x_idempotency_key: Annotated[str, Header(...)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> Order:
-    return await cancel_order(
+    return await OrderService.cancel_order(
         session=session,
         order_id=order_id,
-        user_id=current_user.id,
+        current_user=current_user,
     )

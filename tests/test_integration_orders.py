@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +14,15 @@ async def test_reserve_order_flow(
     test_password = 'super_secret_password'
     test_product_id = uuid4()
     idempotency_key = uuid4().hex
+    test_user_res = await async_client.post(
+        '/api/v1/users', json={'email': test_email, 'password': test_password}
+    )
+    assert test_user_res.status_code == HTTPStatus.CREATED
+    created_user_id = UUID(test_user_res.json()['id'])
+
     test_product = Product(
         id=test_product_id,
+        owner_id=created_user_id,
         name='Hatchback 02 blue',
         description='dayz car such as golf II blue',
         price='150',
@@ -23,10 +30,6 @@ async def test_reserve_order_flow(
     )
     db_session.add(test_product)
     await db_session.commit()
-    test_user = await async_client.post(
-        '/api/v1/users', json={'email': test_email, 'password': test_password}
-    )
-    assert test_user.status_code == HTTPStatus.CREATED
     test_user_login = await async_client.post(
         '/api/v1/auth/token', data={'username': test_email, 'password': test_password}
     )
@@ -52,6 +55,6 @@ async def test_reserve_order_flow(
     )
     assert test_order.status_code == HTTPStatus.OK
     test_order_data = test_order.json()
-    assert test_order_data['status'] == 'pending'
+    assert test_order_data['status'] == 'PENDING'
     assert test_order_data['total_amount'] == '150.00'
     assert 'id' in test_order_data

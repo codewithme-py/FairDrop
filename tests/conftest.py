@@ -77,8 +77,14 @@ async def redis_client() -> AsyncGenerator[Redis, None]:
 async def async_client(
     db_session_factory: async_sessionmaker[AsyncSession], redis_client: Redis
 ) -> AsyncGenerator[AsyncClient, None]:
+    from app.core.database import get_session
     from app.core.lua_scripts import RATE_LIMIT_LUA_SCRIPT
 
+    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
+        async with db_session_factory() as session:
+            yield session
+
+    main_app.dependency_overrides[get_session] = override_get_session
     main_app.state.redis = redis_client
     main_app.state.rate_limit_script = redis_client.register_script(
         RATE_LIMIT_LUA_SCRIPT

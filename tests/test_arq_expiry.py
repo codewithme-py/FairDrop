@@ -1,11 +1,14 @@
 import asyncio
 import datetime
+from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.services.inventory.models import Product, Reservation
+from app.services.inventory.schemas import ProductCreate
+from app.services.inventory.service import InventoryService
 from app.services.inventory.tasks import release_expired_reservations
 from app.services.orders.models import OrderStatus
 from app.services.user.models import User
@@ -21,12 +24,14 @@ async def test_arq_concurrent_expiry_no_double_return(
         await clean_up_session.commit()
     async with db_session_factory() as setup_session:
         user = User(id=uuid4(), email=f'test_{uuid4()}@mail.com', password_hash='foo')
-        product = Product(
-            id=uuid4(), name='Test Plate carrier', price=100.0, qty_available=0
-        )
         setup_session.add(user)
-        setup_session.add(product)
         await setup_session.commit()
+        product_data = ProductCreate(
+            name='Test Plate carrier', price=Decimal('100.00'), qty_available=0
+        )
+        product = await InventoryService.create_product(
+            setup_session, user.id, product_data
+        )
         for _ in range(10):
             reservation = Reservation(
                 qty_reserved=1,

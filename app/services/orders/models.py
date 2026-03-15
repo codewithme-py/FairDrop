@@ -15,13 +15,13 @@ DECIMAL_SCALE = 2
 
 
 class OrderStatus(StrEnum):
-    PENDING = 'pending'
-    PAID = 'paid'
-    SHIPPED = 'shipped'
-    CANCELLED = 'cancelled'
-    FAILED = 'failed'
-    COMPLETED = 'completed'
-    EXPIRED = 'expired'
+    PENDING = 'PENDING'
+    PAID = 'PAID'
+    SHIPPED = 'SHIPPED'
+    CANCELLED = 'CANCELLED'
+    FAILED = 'FAILED'
+    COMPLETED = 'COMPLETED'
+    EXPIRED = 'EXPIRED'
 
 
 class Order(Base):
