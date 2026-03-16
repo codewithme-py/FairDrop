@@ -25,7 +25,7 @@ async def test_concurrent_reservations_service_level(
             name='Test Sneakers', price=Decimal('100.00'), qty_available=10
         )
         product = await InventoryService.create_product(
-            setup_session, user.id, product_data
+            setup_session, user.id, product_data, current_user=user
         )
         product_id = product.id
         user_id = user.id

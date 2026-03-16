@@ -29,7 +29,7 @@ class ProductRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     name: str
-    description: str
+    description: str | None = None
     price: Decimal
     qty_available: int
     status: ProductStatus

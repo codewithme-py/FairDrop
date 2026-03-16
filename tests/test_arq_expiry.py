@@ -30,7 +30,7 @@ async def test_arq_concurrent_expiry_no_double_return(
             name='Test Plate carrier', price=Decimal('100.00'), qty_available=0
         )
         product = await InventoryService.create_product(
-            setup_session, user.id, product_data
+            setup_session, user.id, product_data, current_user=user
         )
         for _ in range(10):
             reservation = Reservation(
