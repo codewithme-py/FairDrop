@@ -1,11 +1,13 @@
-from collections.abc import AsyncGenerator
+import uuid
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
+from structlog.contextvars import bind_contextvars
 
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -46,6 +48,25 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app)
 
 setup_exception_handlers(app)
+
+
+@app.middleware('http')
+async def add_request_context(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    request_id = str(uuid.uuid4())
+    bind_contextvars(
+        request_id=request_id,
+        remote_ip=request.client.host if request.client else 'unknown',
+    )
+    try:
+        response = await call_next(request)
+        response.headers['X-Request-ID'] = request_id
+    except Exception as e:
+        logger.error('request failed', exc_info=True)
+        raise e
+    return response
+
 
 app.include_router(user_router_v1, prefix='/api/v1', tags=['Users'])
 app.include_router(order_router_v1, prefix='/api/v1', tags=['Orders'])

@@ -1,11 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, ForeignKey, Numeric
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime, Integer, String, Text
 
@@ -44,6 +45,11 @@ class Product(Base):
     )
     status: Mapped[ProductStatus] = mapped_column(
         SQLEnum(ProductStatus), nullable=False, default=ProductStatus.DRAFT
+    )
+    if TYPE_CHECKING:
+        from app.services.media.models import ProductImage
+    images: Mapped[list['ProductImage']] = relationship(
+        back_populates='product', cascade='all, delete-orphan'
     )
 
     __table_args__ = (

@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit_log.service import audit_log_service
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.security import check_ownership
 from app.services.inventory.internal import (
@@ -12,7 +13,7 @@ from app.services.inventory.internal import (
 )
 from app.services.inventory.models import Product, Reservation
 from app.services.orders.models import Order, OrderItem, OrderStatus
-from app.services.orders.schemas import OrderCreate
+from app.services.orders.schemas import OrderCreate, OrderResponse
 from app.services.user.models import User
 
 
@@ -33,6 +34,24 @@ class OrderService:
             raise NotFoundError
         check_ownership(current_user, order)
         return order
+
+    @staticmethod
+    async def _log_order_change(
+        session: AsyncSession,
+        user: User,
+        order: Order,
+        old_snapshot: OrderResponse | None,
+        action: str,
+    ) -> None:
+        await audit_log_service.log_object_change(
+            session=session,
+            actor_id=user.id,
+            target_id=order.id,
+            target_type='order',
+            action=action,
+            old_obj=old_snapshot,
+            new_obj=OrderResponse.model_validate(order),
+        )
 
     @staticmethod
     async def create_order_from_reservation(
@@ -80,8 +99,16 @@ class OrderService:
         )
         session.add(create_order_item)
         reservation.order_id = create_order.id
-        await session.commit()
+        await session.flush()
         await session.refresh(create_order, attribute_names=['items'])
+        await OrderService._log_order_change(
+            session=session,
+            user=current_user,
+            order=create_order,
+            old_snapshot=None,
+            action='create',
+        )
+        await session.commit()
         return create_order
 
     @staticmethod
@@ -93,7 +120,17 @@ class OrderService:
         )
         if order.status != OrderStatus.PENDING:
             raise ConflictError
+        await session.flush()
+        await session.refresh(order, attribute_names=['items'])
+        old_snapshot = OrderResponse.model_validate(order)
         order.status = OrderStatus.PAID
+        await OrderService._log_order_change(
+            session=session,
+            user=current_user,
+            order=order,
+            old_snapshot=old_snapshot,
+            action='payment',
+        )
         await mark_reservation_by_order_as_completed(session, order_id)
         await session.commit()
         return order
@@ -107,8 +144,17 @@ class OrderService:
         )
         if order.status != OrderStatus.PENDING:
             raise ConflictError
-
+        await session.flush()
+        await session.refresh(order, attribute_names=['items'])
+        old_snapshot = OrderResponse.model_validate(order)
         order.status = OrderStatus.CANCELLED
+        await OrderService._log_order_change(
+            session=session,
+            user=current_user,
+            order=order,
+            old_snapshot=old_snapshot,
+            action='cancel',
+        )
         await cancel_reservation_by_order_and_return_stock(session, order_id)
         await session.commit()
         return order

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit_log.service import audit_log_service
 from app.core.config import settings
 from app.core.exceptions import (
     ConflictError,
@@ -15,6 +16,7 @@ from app.core.security import check_ownership
 from app.services.inventory.models import Product, ProductStatus, Reservation
 from app.services.inventory.schemas import (
     ProductCreate,
+    ProductRead,
     ProductUpdate,
     ReservationCreate,
 )
@@ -42,24 +44,64 @@ class InventoryService:
         return product
 
     @staticmethod
+    async def _log_product_change(
+        session: AsyncSession,
+        user: User,
+        product: Product,
+        old_snapshot: ProductRead | None,
+        action: str,
+    ) -> None:
+        await audit_log_service.log_object_change(
+            session=session,
+            actor_id=user.id,
+            target_id=product.id,
+            target_type='product',
+            action=action,
+            old_obj=old_snapshot,
+            new_obj=ProductRead.model_validate(product),
+        )
+
+    @staticmethod
     async def change_status(
-        session: AsyncSession, product_id: UUID, status: ProductStatus
+        session: AsyncSession,
+        product_id: UUID,
+        status: ProductStatus,
+        current_user: User,
     ) -> Product:
         product = await InventoryService._get_product(
             session, product_id, for_update=True
         )
+        old_snapshot = ProductRead.model_validate(product)
         product.status = status
+        await InventoryService._log_product_change(
+            session=session,
+            user=current_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='update',
+        )
         await session.commit()
         await session.refresh(product)
         return product
 
     @staticmethod
     async def create_product(
-        session: AsyncSession, owner_id: UUID, product_data: ProductCreate
+        session: AsyncSession,
+        owner_id: UUID,
+        product_data: ProductCreate,
+        current_user: User,
     ) -> Product:
         new_product = Product(**product_data.model_dump())
         new_product.owner_id = owner_id
         session.add(new_product)
+        await session.flush()
+        await InventoryService._log_product_change(
+            session=session,
+            user=current_user,
+            product=new_product,
+            old_snapshot=None,
+            action='create',
+        )
         await session.commit()
         await session.refresh(new_product)
         return new_product
@@ -74,8 +116,16 @@ class InventoryService:
         product = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
         )
+        old_snapshot = ProductRead.model_validate(product)
         for field, value in product_data.model_dump(exclude_unset=True).items():
             setattr(product, field, value)
+        await InventoryService._log_product_change(
+            session=session,
+            user=current_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='update',
+        )
         await session.commit()
         await session.refresh(product)
         return product
@@ -88,6 +138,13 @@ class InventoryService:
     ) -> None:
         product = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
+        )
+        await InventoryService._log_product_change(
+            session=session,
+            user=current_user,
+            product=product,
+            old_snapshot=ProductRead.model_validate(product),
+            action='delete',
         )
         await session.delete(product)
         await session.commit()

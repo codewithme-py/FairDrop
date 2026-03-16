@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request, status
@@ -67,6 +67,7 @@ async def create_product(
     current_user: Annotated[User, SELLER_DEPENDENCY],
 ) -> ProductRead:
     product = await InventoryService.create_product(
+        current_user=current_user,
         session=session,
         product_data=product_data,
         owner_id=current_user.id,
@@ -78,12 +79,13 @@ async def create_product(
 async def activate_product(
     product_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    _: Any = ADMIN_DEPENDENCY,
+    current_user: Annotated[User, ADMIN_DEPENDENCY],
 ) -> ProductRead:
     product = await InventoryService.change_status(
         session=session,
         product_id=product_id,
         status=ProductStatus.ACTIVE,
+        current_user=current_user,
     )
     return ProductRead.model_validate(product)
 
