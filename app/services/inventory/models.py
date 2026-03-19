@@ -20,6 +20,9 @@ class ProductStatus(StrEnum):
     DRAFT = 'DRAFT'
     ACTIVE = 'ACTIVE'
     ARCHIVED = 'ARCHIVED'
+    PENDING_MODERATION = 'PENDING_MODERATION'
+    MODERATION_IN_PROGRESS = 'MODERATION_IN_PROGRESS'
+    REJECTED = 'REJECTED'
 
 
 class Product(Base):
@@ -45,6 +48,9 @@ class Product(Base):
     )
     status: Mapped[ProductStatus] = mapped_column(
         SQLEnum(ProductStatus), nullable=False, default=ProductStatus.DRAFT
+    )
+    moderator_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey('users.id'), nullable=True, index=True
     )
     if TYPE_CHECKING:
         from app.services.media.models import ProductImage

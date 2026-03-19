@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -50,6 +51,7 @@ class InventoryService:
         product: Product,
         old_snapshot: ProductRead | None,
         action: str,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         await audit_log_service.log_object_change(
             session=session,
@@ -59,30 +61,36 @@ class InventoryService:
             action=action,
             old_obj=old_snapshot,
             new_obj=ProductRead.model_validate(product),
+            extra_data=metadata,
         )
 
     @staticmethod
-    async def change_status(
-        session: AsyncSession,
-        product_id: UUID,
-        status: ProductStatus,
-        current_user: User,
+    async def submit_for_moderation(
+        session: AsyncSession, product_id: UUID, current_user: User
     ) -> Product:
-        product = await InventoryService._get_product(
-            session, product_id, for_update=True
+        product_under_moderation = await InventoryService._get_product(
+            session, product_id, for_update=True, current_user=current_user
         )
-        old_snapshot = ProductRead.model_validate(product)
-        product.status = status
+        if product_under_moderation.status not in (
+            ProductStatus.DRAFT,
+            ProductStatus.REJECTED,
+        ):
+            raise ConflictError
+        product_under_moderation_snapshot = ProductRead.model_validate(
+            product_under_moderation
+        )
+        product_under_moderation.status = ProductStatus.PENDING_MODERATION
+        product_under_moderation.moderator_id = None
         await InventoryService._log_product_change(
             session=session,
             user=current_user,
-            product=product,
-            old_snapshot=old_snapshot,
-            action='update',
+            product=product_under_moderation,
+            old_snapshot=product_under_moderation_snapshot,
+            action='submit_for_moderation',
         )
         await session.commit()
-        await session.refresh(product)
-        return product
+        await session.refresh(product_under_moderation)
+        return product_under_moderation
 
     @staticmethod
     async def create_product(
@@ -204,3 +212,101 @@ class InventoryService:
         except IntegrityError:
             await session.rollback()
             raise ConflictError
+
+
+class InventoryAdminService(InventoryService):
+    @staticmethod
+    async def change_status(
+        session: AsyncSession,
+        product_id: UUID,
+        status: ProductStatus,
+        current_user: User,
+    ) -> Product:
+        product = await InventoryService._get_product(
+            session, product_id, for_update=True
+        )
+        old_snapshot = ProductRead.model_validate(product)
+        product.status = status
+        await InventoryService._log_product_change(
+            session=session,
+            user=current_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='update',
+        )
+        await session.commit()
+        await session.refresh(product)
+        return product
+
+    @staticmethod
+    async def claim_for_moderation(
+        session: AsyncSession, product_id: UUID, moderator_user: User
+    ) -> Product:
+        product = await InventoryService._get_product(
+            session, product_id, for_update=True
+        )
+        if product.status != ProductStatus.PENDING_MODERATION:
+            raise ConflictError
+        old_snapshot = ProductRead.model_validate(product)
+        product.status = ProductStatus.MODERATION_IN_PROGRESS
+        product.moderator_id = moderator_user.id
+        await InventoryService._log_product_change(
+            session=session,
+            user=moderator_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='claim_for_moderation',
+        )
+        await session.commit()
+        await session.refresh(product)
+        return product
+
+    @staticmethod
+    async def approve_product(
+        session: AsyncSession, product_id: UUID, moderator_user: User
+    ) -> Product:
+        product = await InventoryService._get_product(
+            session, product_id, for_update=True
+        )
+        if product.status != ProductStatus.MODERATION_IN_PROGRESS:
+            raise ConflictError
+        old_snapshot = ProductRead.model_validate(product)
+        product.status = ProductStatus.ACTIVE
+        product.moderator_id = None
+        await InventoryService._log_product_change(
+            session=session,
+            user=moderator_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='approve',
+        )
+        await session.commit()
+        await session.refresh(product)
+        return product
+
+    @staticmethod
+    async def reject_product(
+        session: AsyncSession,
+        product_id: UUID,
+        moderator_user: User,
+        reason: str,
+    ) -> Product:
+        product = await InventoryService._get_product(
+            session, product_id, for_update=True
+        )
+        if product.status != ProductStatus.MODERATION_IN_PROGRESS:
+            raise ConflictError
+        old_snapshot = ProductRead.model_validate(product)
+        product.status = ProductStatus.REJECTED
+        product.moderator_id = None
+        await InventoryService._log_product_change(
+            session=session,
+            user=moderator_user,
+            product=product,
+            old_snapshot=old_snapshot,
+            action='reject',
+            metadata={'reason': reason},
+        )
+        await session.commit()
+        await session.refresh(product)
+        return product

@@ -17,11 +17,13 @@ class AuditLogService:
         target_id: UUID,
         action: str,
         changes: dict[str, Any],
+        extra_data: dict[str, Any] | None = None,
     ) -> None:
         context = get_contextvars()
         request_id = context.get('request_id')
         remote_ip = context.get('remote_ip')
-
+        if extra_data:
+            changes.update(extra_data)
         log = AuditLog(
             actor_id=actor_id,
             target_type=target_type,
@@ -63,6 +65,7 @@ class AuditLogService:
         action: str,
         old_obj: BaseModel | None,
         new_obj: BaseModel | None,
+        extra_data: dict[str, Any] | None = None,
     ) -> None:
         diff = self.get_diff(old_obj, new_obj)
         if diff:
@@ -73,6 +76,7 @@ class AuditLogService:
                 target_id=target_id,
                 action=action,
                 changes=diff,
+                extra_data=extra_data,
             )
 
 
