@@ -4,10 +4,9 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_session
+from app.core.database import SessionDep
 from app.core.exceptions import CredentialsError
 from app.services.user.models import User
 
@@ -16,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/v1/auth/token')
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
 ) -> User:
     try:
         payload = jwt.decode(
