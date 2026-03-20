@@ -1,17 +1,38 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Depends
+from fastapi.security import APIKeyHeader
 from jose import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
-from app.core.exceptions import PermissionDeniedError
+from app.core.database import SessionDep
+from app.core.exceptions import CredentialsError, PermissionDeniedError
 from app.services.user.models import User, UserRole
 from app.shared.deps import get_current_user
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+header_scheme = APIKeyHeader(name='X-API-Key', auto_error=False)
+
+
+async def get_b2b_partner_by_api_key(
+    api_key: Annotated[str | None, Depends(header_scheme)], session: SessionDep
+) -> User:
+    from app.services.user.service import UserService
+
+    if not api_key:
+        raise CredentialsError('API key is required')
+    key_obj = await UserService.authenticate_api_key_b2b_partner(session, api_key)
+    if not key_obj:
+        raise CredentialsError('Invalid API key')
+    user = key_obj.user
+    if not user.is_active:
+        raise CredentialsError('User is not active')
+    if user.role not in (UserRole.USER_B2B, UserRole.SELLER_B2B):
+        raise CredentialsError('Not a B2B partner account')
+    return user
 
 
 def verify_password_sync(plain_password: str, hashed_password: str) -> bool:

@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -7,12 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
-from app.core.exceptions import CredentialsError, UserAlreadyExists
+from app.core.exceptions import CredentialsError, NotFoundError, UserAlreadyExists
 from app.core.security import get_password_hash, verify_password
-from app.services.user.models import RefreshToken, User
+from app.services.user.models import APIKeyB2BPartner, RefreshToken, User
 from app.services.user.schemas import UserCreate
 
 URLSAFE_PARAM = 32
+KEY_LENGTH_PREFIX = 12
 
 
 class UserService:
@@ -67,3 +68,60 @@ class UserService:
         await session.delete(token_obj)
         await session.commit()
         return user
+
+    @staticmethod
+    async def create_api_key_b2b_partner(
+        session: AsyncSession, user_id: UUID, name: str
+    ) -> tuple[APIKeyB2BPartner, str]:
+        raw_key = secrets.token_urlsafe(URLSAFE_PARAM)
+        key_prefix = raw_key[:KEY_LENGTH_PREFIX]
+        hashed_key = await get_password_hash(raw_key)
+        create_api_key_b2b_partner = APIKeyB2BPartner(
+            user_id=user_id,
+            name=name,
+            key_prefix=key_prefix,
+            hashed_key=hashed_key,
+        )
+        session.add(create_api_key_b2b_partner)
+        await session.commit()
+        await session.refresh(create_api_key_b2b_partner)
+        return create_api_key_b2b_partner, raw_key
+
+    @staticmethod
+    async def authenticate_api_key_b2b_partner(
+        session: AsyncSession, raw_key: str
+    ) -> APIKeyB2BPartner | None:
+        key_prefix = raw_key[:KEY_LENGTH_PREFIX]
+        result = await session.execute(
+            select(APIKeyB2BPartner)
+            .options(joinedload(APIKeyB2BPartner.user))
+            .where(
+                APIKeyB2BPartner.key_prefix == key_prefix,
+                APIKeyB2BPartner.is_active,
+            )
+        )
+        api_key = result.scalar_one_or_none()
+        if api_key and await verify_password(raw_key, api_key.hashed_key):
+            api_key.last_used_at = datetime.now(UTC)
+            await session.commit()
+            return api_key
+        return None
+
+    @staticmethod
+    async def delete_api_key_b2b_partner(
+        session: AsyncSession,
+        user_id: UUID,
+        key_id: UUID,
+    ) -> None:
+        result = await session.execute(
+            select(APIKeyB2BPartner).where(
+                APIKeyB2BPartner.user_id == user_id,
+                APIKeyB2BPartner.id == key_id,
+            )
+        )
+        api_key = result.scalar_one_or_none()
+        if not api_key:
+            raise NotFoundError()
+        await session.delete(api_key)
+        await session.commit()
+        return None
