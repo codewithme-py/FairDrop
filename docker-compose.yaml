@@ -78,6 +78,18 @@ services:
     volumes:
       - fairdrop-app:/data
       
+  worker:
+    build: .
+    command: /app/.venv/bin/arq app.worker.WorkerSettings
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - fairdrop-app:/data
+      
   gateway:
     image: nginx:alpine
     container_name: ${GATEWAY_HOST}

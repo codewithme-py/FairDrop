@@ -7,9 +7,14 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
+from sqladmin import Admin
+from starlette.middleware.sessions import SessionMiddleware
 from structlog.contextvars import bind_contextvars
 
+from app.core.admin.admin import register_admin_views
+from app.core.admin.admin_auth import authentication_backend
 from app.core.config import settings
+from app.core.database import engine
 from app.core.logging import setup_logging
 from app.core.lua_scripts import RATE_LIMIT_LUA_SCRIPT
 from app.core.s3 import init_s3_bucket
@@ -48,6 +53,17 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app)
 
 setup_exception_handlers(app)
+
+admin = Admin(
+    app,
+    engine,
+    authentication_backend=authentication_backend,
+    title='FairDrop Admin Panel',
+)
+
+register_admin_views(admin)
+
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 
 @app.middleware('http')

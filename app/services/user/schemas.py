@@ -1,9 +1,10 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from .models import UserRole
+from .models import UserRole, VerificationStatus
 
 
 class UserCreate(BaseModel):
@@ -45,3 +46,15 @@ class APIKeyRead(BaseModel):
 
 class APIKeyWithSecret(APIKeyRead):
     raw_key: str
+
+
+class VerificationRequestCreate(BaseModel):
+    target_role: Literal[UserRole.USER_B2B, UserRole.SELLER_B2B]
+    docs_url: dict[str, str] | None = None
+
+
+class VerificationRequestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    status: VerificationStatus
+    created_at: datetime

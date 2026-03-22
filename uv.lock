@@ -974,6 +974,7 @@ dependencies = [
     { name = "boto3-stubs", extra = ["essential", "s3"] },
     { name = "email-validator" },
     { name = "fastapi" },
+    { name = "itsdangerous" },
     { name = "orjson" },
     { name = "passlib", extra = ["bcrypt"] },
     { name = "prometheus-fastapi-instrumentator" },
@@ -981,6 +982,7 @@ dependencies = [
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
     { name = "redis" },
+    { name = "sqladmin" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
@@ -1009,6 +1011,7 @@ requires-dist = [
     { name = "boto3-stubs", extras = ["essential", "s3"], specifier = ">=1.42.54" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.129.0" },
+    { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "orjson", specifier = ">=3.11.7" },
     { name = "passlib", extras = ["bcrypt"], specifier = "==1.7.4" },
     { name = "prometheus-fastapi-instrumentator", specifier = ">=7.1.0" },
@@ -1016,6 +1019,7 @@ requires-dist = [
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.5.0" },
     { name = "python-multipart", specifier = ">=0.0.22" },
     { name = "redis", specifier = ">=5.3.1" },
+    { name = "sqladmin", specifier = ">=0.23.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.46" },
     { name = "structlog", specifier = ">=25.5.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.40.0" },
@@ -3092,6 +3096,22 @@ wheels = [
 ]
 
 [[package]]
+name = "sqladmin"
+version = "0.23.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "python-multipart" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "wtforms" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/4e/c05e73c207865f76331ee306e69c468a81eb5e104486d704a377230912ff/sqladmin-0.23.0.tar.gz", hash = "sha256:62339022dbf2f5d7323a6b6b548d2daa9ea2f98fc675b238ac7af088f1d530d2", size = 1437285, upload-time = "2026-02-04T08:15:29.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/76/640953262e86ce6903db8f7005b8ff681ee232cfc90242cce3ece081ecda/sqladmin-0.23.0-py3-none-any.whl", hash = "sha256:d8f3a837bb7e6759f9c4069102190182b070ba2c63480a5eaa95c9b8f46ad4c5", size = 1450678, upload-time = "2026-02-04T08:15:31.489Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.46"
 source = { registry = "https://pypi.org/simple" }
@@ -3634,6 +3654,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c7/79/12135bdf8b9c9367b8701c2c19a14c913c120b882d50b014ca0d38083c2c/wsproto-1.3.2.tar.gz", hash = "sha256:b86885dcf294e15204919950f666e06ffc6c7c114ca900b060d6e16293528294", size = 50116, upload-time = "2025-11-20T18:18:01.871Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl", hash = "sha256:61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584", size = 24405, upload-time = "2025-11-20T18:18:00.454Z" },
+]
+
+[[package]]
+name = "wtforms"
+version = "3.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/c7/96d10183c3470f1836846f7b9527d6cb0b6c2226ebca40f36fa29f23de60/wtforms-3.1.2.tar.gz", hash = "sha256:f8d76180d7239c94c6322f7990ae1216dae3659b7aa1cee94b6318bdffb474b9", size = 134705, upload-time = "2024-01-06T07:52:41.075Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/19/c3232f35e24dccfad372e9f341c4f3a1166ae7c66e4e1351a9467c921cc1/wtforms-3.1.2-py3-none-any.whl", hash = "sha256:bf831c042829c8cdbad74c27575098d541d039b1faa74c771545ecac916f2c07", size = 145961, upload-time = "2024-01-06T07:52:43.023Z" },
 ]
 
 [[package]]

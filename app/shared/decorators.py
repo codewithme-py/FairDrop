@@ -35,7 +35,9 @@ def idempotent(
                     detail='Missing X-Idempotency-Key header',
                 )
             redis_client = request.app.state.redis
-            redis_key = f'idempotency:{idempotency_key}'
+            redis_key = (
+                f'idempotency:{request.method}:{request.url.path}:{idempotency_key}'
+            )
             cached_response = await redis_client.get(redis_key)
             if cached_response:
                 data = orjson.loads(cached_response)
