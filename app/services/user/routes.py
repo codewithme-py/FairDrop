@@ -4,11 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 
 from app.core.database import SessionDep
 from app.core.exceptions import CredentialsError
 from app.core.security import RoleChecker, create_access_token
-from app.services.user.models import User, UserRole
+from app.services.user.models import APIKeyB2BPartner, User, UserRole
 from app.services.user.schemas import (
     APIKeyCreate,
     APIKeyRead,
@@ -17,6 +18,8 @@ from app.services.user.schemas import (
     Token,
     UserCreate,
     UserRead,
+    VerificationRequestCreate,
+    VerificationRequestRead,
 )
 from app.services.user.service import UserService
 from app.shared.deps import get_current_user
@@ -88,11 +91,13 @@ async def create_api_key_b2b_partner(
 @router_v1.get('/users/me/api-keys', response_model=list[APIKeyRead])
 async def get_api_keys_b2b_partners(
     current_user: Annotated[User, B2B_PARTNER_DEP],
+    session: SessionDep,
 ) -> list[APIKeyRead]:
-    return [
-        APIKeyRead.model_validate(api_key)
-        for api_key in current_user.api_keys_b2b_partners
-    ]
+    result = await session.execute(
+        select(APIKeyB2BPartner).where(APIKeyB2BPartner.user_id == current_user.id)
+    )
+    api_keys = result.scalars().all()
+    return [APIKeyRead.model_validate(api_key) for api_key in api_keys]
 
 
 @router_v1.delete('/users/me/api-keys/{key_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -102,3 +107,22 @@ async def delete_api_key_b2b_partner(
     session: SessionDep,
 ) -> None:
     await UserService.delete_api_key_b2b_partner(session, current_user.id, key_id)
+
+
+@router_v1.post(
+    '/users/me/upgrade-requests',
+    status_code=status.HTTP_201_CREATED,
+    response_model=VerificationRequestRead,
+)
+async def create_upgrade_request(
+    schema: VerificationRequestCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: SessionDep,
+) -> VerificationRequestRead:
+    verification_request = await UserService.create_verification_request(
+        session=session,
+        user_id=current_user.id,
+        target_role=schema.target_role,
+        docs_url=schema.docs_url,
+    )
+    return VerificationRequestRead.model_validate(verification_request)

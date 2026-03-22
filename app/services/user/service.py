@@ -7,9 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
-from app.core.exceptions import CredentialsError, NotFoundError, UserAlreadyExists
+from app.core.exceptions import (
+    CredentialsError,
+    NotFoundError,
+    PermissionDeniedError,
+    UserAlreadyExists,
+    VerificationRequestAlreadyExists,
+)
 from app.core.security import get_password_hash, verify_password
-from app.services.user.models import APIKeyB2BPartner, RefreshToken, User
+from app.services.user.models import (
+    APIKeyB2BPartner,
+    RefreshToken,
+    User,
+    UserRole,
+    VerificationRequest,
+    VerificationStatus,
+)
 from app.services.user.schemas import UserCreate
 
 URLSAFE_PARAM = 32
@@ -125,3 +138,30 @@ class UserService:
         await session.delete(api_key)
         await session.commit()
         return None
+
+    @staticmethod
+    async def create_verification_request(
+        session: AsyncSession,
+        user_id: UUID,
+        target_role: UserRole,
+        docs_url: dict | None = None,
+    ) -> VerificationRequest:
+        result = await session.execute(
+            select(VerificationRequest).where(
+                VerificationRequest.user_id == user_id,
+                VerificationRequest.status == VerificationStatus.PENDING,
+            )
+        )
+        if result.scalar_one_or_none():
+            raise VerificationRequestAlreadyExists()
+        if target_role in (UserRole.ADMIN, UserRole.MODERATOR):
+            raise PermissionDeniedError('Cannot request administrative roles')
+        verification_request = VerificationRequest(
+            user_id=user_id,
+            target_role=target_role,
+            docs_url=docs_url,
+        )
+        session.add(verification_request)
+        await session.commit()
+        await session.refresh(verification_request)
+        return verification_request

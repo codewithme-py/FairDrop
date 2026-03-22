@@ -8,6 +8,7 @@ from .exceptions import (
     NotFoundError,
     PermissionDeniedError,
     UserAlreadyExists,
+    VerificationRequestAlreadyExists,
 )
 
 EXISTING_USER_MESSAGE = 'User already exists'
@@ -65,4 +66,13 @@ async def permission_denied_handler(
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={'detail': str(exc) or 'Permission denied'},
+    )
+
+
+async def verification_request_already_exists_handler(
+    request: Request, exc: VerificationRequestAlreadyExists
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={'detail': str(exc) or 'Verification request already exists'},
     )

@@ -2,8 +2,8 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
+from sqlalchemy import JSON, ForeignKey
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import Boolean, DateTime, String
@@ -22,6 +22,12 @@ class UserRole(StrEnum):
     SELLER_B2B = 'SELLER_B2B'
 
 
+class VerificationStatus(StrEnum):
+    PENDING = 'PENDING'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
+
+
 class User(Base):
     __tablename__ = 'users'
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -35,6 +41,9 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     refresh_tokens: Mapped[list['RefreshToken']] = relationship(back_populates='user')
     api_keys_b2b_partners: Mapped[list['APIKeyB2BPartner']] = relationship(
+        back_populates='user'
+    )
+    verification_requests: Mapped[list['VerificationRequest']] = relationship(
         back_populates='user'
     )
 
@@ -67,3 +76,22 @@ class APIKeyB2BPartner(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     user: Mapped[User] = relationship(back_populates='api_keys_b2b_partners')
+
+
+class VerificationRequest(Base):
+    __tablename__ = 'verification_requests'
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    target_role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), nullable=False)
+    status: Mapped[VerificationStatus] = mapped_column(
+        SQLEnum(VerificationStatus), default=VerificationStatus.PENDING
+    )
+    docs_url: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    admin_feedback: Mapped[str | None] = mapped_column(String(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    user: Mapped[User] = relationship(back_populates='verification_requests')

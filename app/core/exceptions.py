@@ -44,3 +44,10 @@ class PermissionDeniedError(AppError):
 
     def __init__(self, message: str = 'Permission denied'):
         super().__init__(message=message)
+
+
+class VerificationRequestAlreadyExists(AppError):
+    """Verification request already exists."""
+
+    def __init__(self, message: str = 'Verification request already exists'):
+        super().__init__(message=message)
