@@ -14,6 +14,7 @@ from app.services.media.schemas import (
     ImageUploadResponse,
     MinioWebhookEvent,
 )
+from app.services.user.models import VerificationRequest
 
 logger = structlog.get_logger(__name__)
 
@@ -32,6 +33,39 @@ async def generate_presigned_get_url(
             ExpiresIn=expires_in,
         ),
     )
+
+
+async def get_secure_file_path(
+    session: AsyncSession,
+    target_type: str,
+    target_id: UUID,
+    doc_key: str | None = None,
+) -> str | None:
+    """Resolves a secure S3 path from a database resource."""
+    if target_type == 'verification_doc':
+        result_v = await session.execute(
+            select(VerificationRequest).where(VerificationRequest.id == target_id)
+        )
+        v_req = result_v.scalar_one_or_none()
+        if v_req and v_req.docs_url and doc_key:
+            return str(v_req.docs_url.get(doc_key))
+    elif target_type == 'product_image':
+        result_i = await session.execute(
+            select(ProductImage).where(ProductImage.id == target_id)
+        )
+        img = result_i.scalar_one_or_none()
+        if img:
+            return str(img.file_path)
+    return None
+
+
+async def sanitize_image_metadata(
+    s3_client: Any,
+    bucket: str,
+    key: str,
+) -> None:
+    """OBSOLETE: Moved to tasks.py"""
+    pass
 
 
 async def generate_upload_url(
@@ -74,6 +108,7 @@ async def generate_upload_url(
 async def handle_minio_webhook(
     session: AsyncSession,
     event: MinioWebhookEvent,
+    arq_redis: Any = None,
 ) -> None:
     if not event.records:
         return
@@ -88,7 +123,16 @@ async def handle_minio_webhook(
         )
         image = result.scalar_one_or_none()
         if image is not None and image.status == ImageStatus.PENDING:
-            image.status = ImageStatus.ACTIVE
-            await session.commit()
+            # Point 3: Enqueue background sanitization task
+            if arq_redis:
+                await arq_redis.enqueue_job(
+                    'sanitize_and_activate_image_task',
+                    image_id=image.id,
+                    bucket=settings.minio_bucket_name,
+                    object_key=object_key,
+                )
+                logger.info('enqueued image sanitization task', key=object_key)
+            else:
+                logger.warning('arq_redis pool not provided to webhook handler')
         else:
             logger.warning('image not found or not in pending status')

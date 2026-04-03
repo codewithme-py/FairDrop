@@ -14,7 +14,7 @@ from app.services.inventory.internal import (
 from app.services.inventory.models import Product, Reservation
 from app.services.orders.models import Order, OrderItem, OrderStatus
 from app.services.orders.schemas import OrderCreate, OrderResponse
-from app.services.user.models import User
+from app.services.user.models import User, UserRole
 
 
 class OrderService:
@@ -52,6 +52,27 @@ class OrderService:
             old_obj=old_snapshot,
             new_obj=OrderResponse.model_validate(order),
         )
+
+    @staticmethod
+    async def get_order_for_details(
+        session: AsyncSession,
+        order_id: UUID,
+        current_user: User,
+    ) -> Order:
+        order = await OrderService._get_order(session, order_id, current_user)
+        if current_user.id != order.user_id and current_user.role in (
+            UserRole.ADMIN,
+            UserRole.MODERATOR,
+        ):
+            await audit_log_service.log_pii_access(
+                session=session,
+                actor_id=current_user.id,
+                target_id=order.id,
+                target_type='order',
+                reason='admin_pii_view',
+            )
+            await session.commit()
+        return order
 
     @staticmethod
     async def create_order_from_reservation(

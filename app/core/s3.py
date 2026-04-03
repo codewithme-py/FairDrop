@@ -1,5 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import aioboto3  # type: ignore
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 session = aioboto3.Session()
 
 
+@asynccontextmanager
 async def get_s3_client() -> AsyncGenerator[Any, None]:
     async with session.client(
         's3',

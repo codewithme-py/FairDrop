@@ -7,6 +7,11 @@ from structlog.contextvars import get_contextvars
 
 from app.core.audit_log.models import AuditLog
 
+SENSITIVE_FIELDS = {
+    'shipping_address',
+    'email',
+}
+
 
 class AuditLogService:
     async def log_event(
@@ -41,6 +46,7 @@ class AuditLogService:
         old_model: BaseModel | None,
         new_model: BaseModel | None,
     ) -> dict[str, Any]:
+        diff: dict[str, Any] = {}
         if old_model is None and new_model is not None:
             return {k: [None, v] for k, v in new_model.model_dump(mode='json').items()}
         if old_model is not None and new_model is None:
@@ -48,13 +54,16 @@ class AuditLogService:
         if old_model is not None and new_model is not None:
             old_data = old_model.model_dump(mode='json')
             new_data = new_model.model_dump(mode='json')
-            diff = {}
             for key, value in new_data.items():
                 old_val = old_data.get(key)
                 if value != old_val:
-                    diff[key] = [old_val, value]
+                    if key in SENSITIVE_FIELDS:
+                        masked = '[SENSITIVE_DATA_HIDDEN]'
+                        diff[key] = [masked, masked]
+                    else:
+                        diff[key] = [old_val, value]
             return diff
-        return {}
+        return diff
 
     async def log_object_change(
         self,
@@ -78,6 +87,23 @@ class AuditLogService:
                 changes=diff,
                 extra_data=extra_data,
             )
+
+    async def log_pii_access(
+        self,
+        session: AsyncSession,
+        actor_id: UUID,
+        target_id: UUID,
+        target_type: str,
+        reason: str | None = None,
+    ) -> None:
+        await self.log_event(
+            session=session,
+            actor_id=actor_id,
+            target_id=target_id,
+            target_type=target_type,
+            action='pii_access',
+            changes={'pii_accessed': True, 'reason': reason},
+        )
 
 
 audit_log_service = AuditLogService()

@@ -1,10 +1,12 @@
+from http import HTTPStatus
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit_log.service import audit_log_service
 from app.core.database import get_session
 from app.core.s3 import get_s3_client
 from app.services.media.schemas import (
@@ -15,6 +17,7 @@ from app.services.media.schemas import (
 from app.services.media.service import (
     generate_presigned_get_url,
     generate_upload_url,
+    get_secure_file_path,
     handle_minio_webhook,
 )
 from app.services.user.models import User, UserRole
@@ -36,23 +39,38 @@ async def create_upload_url(
 
 @router_v1.post('/webhook/minio')
 async def minio_webhook(
+    request: Request,
     event: MinioWebhookEvent,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
-    await handle_minio_webhook(session, event)
+    await handle_minio_webhook(session, event, arq_redis=request.app.state.arq_redis)
     return {'status': 'ok'}
 
 
-@router_v1.get('/view', response_class=RedirectResponse)
+@router_v1.get('/view/{target_type}/{target_id}', response_class=RedirectResponse)
 async def view_private_file(
-    key: str,
+    target_type: str,
+    target_id: UUID,
+    doc_key: str | None = None,
+    session: AsyncSession = Depends(get_session),
     s3_client: Any = Depends(get_s3_client),
     current_user: User = Depends(get_current_user),
 ) -> RedirectResponse:
     if current_user.role not in (UserRole.ADMIN, UserRole.MODERATOR):
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=403, detail='Not authorized to view this file')
-
-    url = await generate_presigned_get_url(s3_client, key)
-    return RedirectResponse(url=url, status_code=307)
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail='Not authorized to view this file'
+        )
+    file_path = await get_secure_file_path(session, target_type, target_id, doc_key)
+    if not file_path:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail='File not found')
+    if target_type == 'verification_doc':
+        await audit_log_service.log_pii_access(
+            session=session,
+            actor_id=current_user.id,
+            target_id=target_id,
+            target_type='verification_request',
+            reason=f'viewing_doc_{doc_key}' if doc_key else 'viewing_verification_doc',
+        )
+        await session.commit()
+    url = await generate_presigned_get_url(s3_client, file_path)
+    return RedirectResponse(url=url, status_code=HTTPStatus.TEMPORARY_REDIRECT)

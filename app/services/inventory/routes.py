@@ -3,10 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 
+from app.core.config import settings
 from app.core.database import SessionDep
 from app.core.security import RoleChecker, UserRole
 from app.services.inventory.models import ProductStatus
-from app.services.inventory.rate_limit import check_rate_limit
 from app.services.inventory.schemas import (
     ProductCreate,
     ProductRead,
@@ -18,6 +18,7 @@ from app.services.inventory.service import InventoryAdminService, InventoryServi
 from app.services.user.models import User
 from app.shared.decorators import idempotent
 from app.shared.deps import get_current_user
+from app.shared.rate_limit import check_rate_limit
 
 from .deps import (
     get_inventory_admin_service,
@@ -153,8 +154,11 @@ async def reservation_data(
 ) -> ReservationResponse:
     await check_rate_limit(
         rate_limit_script=request.app.state.rate_limit_script,
-        user_id=str(current_user.id),
-        item_id=str(reservation_data.product_id),
+        keys=[
+            f'rate_limit:user:{current_user.id}',
+            f'rate_limit:item:{reservation_data.product_id}',
+        ],
+        limits=[settings.rate_limit_user_rps, settings.rate_limit_global_rps],
     )
     result = await service.reserve_items(
         session=session,

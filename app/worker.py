@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.core.config import settings
 from app.main import logger
 from app.services.inventory.tasks import release_expired_reservations
+from app.services.media.tasks import sanitize_and_activate_image_task
 
 
 async def startup(ctx: dict) -> None:
@@ -25,4 +26,4 @@ class WorkerSettings(RedisSettings):
     on_startup = startup
     on_shutdown = shutdown
     cron_jobs: list = [cron(release_expired_reservations, minute=None)]
-    functions: list = []
+    functions: list = [sanitize_and_activate_image_task]
