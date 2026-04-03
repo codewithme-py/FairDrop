@@ -1,16 +1,15 @@
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
 
+from app.core.auth_schemes import header_scheme, oauth2_scheme
 from app.core.config import settings
 from app.core.database import SessionDep
-from app.core.exceptions import CredentialsError
+from app.core.exceptions import CredentialsError, PermissionDeniedError
 from app.services.user.models import User
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/v1/auth/token')
+from app.services.user.service import UserService
 
 
 async def get_current_user(
@@ -31,3 +30,17 @@ async def get_current_user(
         return user
     except JWTError:
         raise CredentialsError()
+
+
+async def get_api_key_user(
+    api_key: Annotated[str | None, Depends(header_scheme)],
+    session: SessionDep,
+) -> User:
+    if not api_key:
+        raise PermissionDeniedError('Missing API Key')
+    api_key_record = await UserService.authenticate_api_key_b2b_partner(
+        session, api_key
+    )
+    if not api_key_record:
+        raise PermissionDeniedError('Invalid API Key')
+    return api_key_record.user

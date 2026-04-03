@@ -52,6 +52,7 @@ class Product(Base):
     moderator_id: Mapped[UUID | None] = mapped_column(
         ForeignKey('users.id'), nullable=True, index=True
     )
+    moderation_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     if TYPE_CHECKING:
         from app.services.media.models import ProductImage
     images: Mapped[list['ProductImage']] = relationship(

@@ -19,9 +19,12 @@ from app.core.logging import setup_logging
 from app.core.lua_scripts import RATE_LIMIT_LUA_SCRIPT
 from app.core.s3 import init_s3_bucket
 from app.core.setup import setup_exception_handlers
+from app.services.buyer_user.routes import router_v1 as buyer_user_router_v1
+from app.services.external.routes import router_v1 as external_router_v1
 from app.services.inventory.routes import router_v1 as inventory_router_v1
 from app.services.media.routes import router_v1 as media_router_v1
 from app.services.orders.routes import router_v1 as order_router_v1
+from app.services.seller_user.routes import router_v1 as seller_user_router_v1
 from app.services.user.routes import router_v1 as user_router_v1
 
 setup_logging()
@@ -88,6 +91,9 @@ app.include_router(user_router_v1, prefix='/api/v1', tags=['Users'])
 app.include_router(order_router_v1, prefix='/api/v1', tags=['Orders'])
 app.include_router(inventory_router_v1, prefix='/api/v1', tags=['Inventory'])
 app.include_router(media_router_v1, prefix='/api/v1', tags=['Media'])
+app.include_router(seller_user_router_v1, prefix='/api/v1', tags=['Seller Dashboard'])
+app.include_router(buyer_user_router_v1, prefix='/api/v1', tags=['Buyer Dashboard'])
+app.include_router(external_router_v1, prefix='/api/v1', tags=['Partner API'])
 
 
 @app.get('/health')

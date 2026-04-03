@@ -1,20 +1,15 @@
-import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import Depends
-from fastapi.security import APIKeyHeader
 from jose import jwt
-from passlib.context import CryptContext
 
+from app.core.auth_schemes import header_scheme
 from app.core.config import settings
 from app.core.database import SessionDep
 from app.core.exceptions import CredentialsError, PermissionDeniedError
 from app.services.user.models import User, UserRole
 from app.shared.deps import get_current_user
-
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-header_scheme = APIKeyHeader(name='X-API-Key', auto_error=False)
 
 
 async def get_b2b_partner_by_api_key(
@@ -33,24 +28,6 @@ async def get_b2b_partner_by_api_key(
     if user.role not in (UserRole.USER_B2B, UserRole.SELLER_B2B):
         raise CredentialsError('Not a B2B partner account')
     return user
-
-
-def verify_password_sync(plain_password: str, hashed_password: str) -> bool:
-    return bool(pwd_context.verify(plain_password, hashed_password))
-
-
-async def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return await asyncio.to_thread(
-        verify_password_sync, plain_password, hashed_password
-    )
-
-
-def get_password_hash_sync(password: str) -> str:
-    return str(pwd_context.hash(password))
-
-
-async def get_password_hash(password: str) -> str:
-    return await asyncio.to_thread(get_password_hash_sync, password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

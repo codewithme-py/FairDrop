@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -16,6 +16,22 @@ from app.services.media.schemas import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+async def generate_presigned_get_url(
+    s3_client: Any,
+    key: str,
+    expires_in: int = 3600,
+) -> str:
+    """Generates a presigned GET URL for reading private files."""
+    return cast(
+        str,
+        await s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': settings.minio_bucket_name, 'Key': key},
+            ExpiresIn=expires_in,
+        ),
+    )
 
 
 async def generate_upload_url(

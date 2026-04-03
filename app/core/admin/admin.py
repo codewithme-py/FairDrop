@@ -75,6 +75,20 @@ class AdminPanelFormatter:
             return 'N/A'
         return Markup(f'<a href="/admin/order/details/{order_id}">{order_id}</a>')
 
+    @staticmethod
+    def docs_link_formatter(model: Any, name: Any) -> Any:
+        docs = getattr(model, name)
+        if not docs:
+            return 'No docs'
+        links = []
+        if isinstance(docs, dict):
+            for doc_type, s3_key in docs.items():
+                links.append(
+                    f'<a href="/api/v1/media/view?key={s3_key}" '
+                    f'target="_blank">{doc_type}</a>'
+                )
+        return Markup(', '.join(links))
+
 
 class VerificationRequestAdmin(ModelView, model=VerificationRequest):
     column_list = [
@@ -93,6 +107,7 @@ class VerificationRequestAdmin(ModelView, model=VerificationRequest):
         'user_id': AdminPanelFormatter.user_link_formatter,
         'target_role': AdminPanelFormatter.status_formatter,
         'status': AdminPanelFormatter.status_formatter,
+        'docs_url': AdminPanelFormatter.docs_link_formatter,
     }
     column_formatters_detail = column_formatters
     name = 'Verification Request'
@@ -156,6 +171,7 @@ class ProductAdmin(ModelView, model=Product):
         Product.status,
         Product.owner_id,
         Product.moderator_id,
+        Product.moderation_comment,
     ]
     column_labels = {'qty_available': 'Quantity Available'}
     column_default_sort = [('created_at', True)]
@@ -165,11 +181,21 @@ class ProductAdmin(ModelView, model=Product):
         'moderator_id': AdminPanelFormatter.user_link_formatter,
     }
     column_formatters_detail = column_formatters
-    column_searchable_list = [Product.id, Product.name, Product.description]
+    column_searchable_list = [
+        Product.id,
+        Product.name,
+        Product.description,
+        Product.moderation_comment,
+    ]
     can_delete = False
     name = 'Product'
     name_plural = 'Products'
     icon = 'fa-solid fa-box'
+    form_columns = [
+        Product.status,
+        Product.moderator_id,
+        Product.moderation_comment,
+    ]
 
 
 class OrderAdmin(ModelView, model=Order):
