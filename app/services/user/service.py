@@ -14,7 +14,7 @@ from app.core.exceptions import (
     UserAlreadyExists,
     VerificationRequestAlreadyExists,
 )
-from app.core.security import get_password_hash, verify_password
+from app.core.hashing import get_password_hash, verify_password
 from app.services.user.models import (
     APIKeyB2BPartner,
     RefreshToken,

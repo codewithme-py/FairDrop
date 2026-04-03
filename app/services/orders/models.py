@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, Text
@@ -62,6 +63,9 @@ class OrderItem(Base):
     product_id: Mapped[UUID] = mapped_column(
         ForeignKey('products.id'), nullable=False, index=True
     )
+    if TYPE_CHECKING:
+        from app.services.inventory.models import Product
+    product: Mapped['Product'] = relationship('Product')
 
     order: Mapped['Order'] = relationship('Order', back_populates='items')
     product_name: Mapped[str] = mapped_column(String(), nullable=False)
