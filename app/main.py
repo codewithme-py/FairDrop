@@ -3,6 +3,8 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import structlog
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -36,11 +38,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     client = Redis.from_url(settings.redis_url, decode_responses=True, encoding='utf-8')
     app.state.redis = client
     app.state.rate_limit_script = client.register_script(RATE_LIMIT_LUA_SCRIPT)
+    app.state.arq_redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     await init_s3_bucket()
     try:
         logger.info('redis connected')
+        logger.info('arq pool created')
         yield
     finally:
+        await app.state.arq_redis.close()
         await client.aclose()
         logger.info('redis disconnected')
 

@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
@@ -23,22 +23,30 @@ from app.services.user.schemas import (
 )
 from app.services.user.service import UserService
 from app.shared.deps import get_current_user
+from app.shared.rate_limit_utils import limit_login_attempts, limit_signup_attempts
 
 router_v1 = APIRouter()
 B2B_PARTNER_DEP = Depends(RoleChecker([UserRole.USER_B2B, UserRole.SELLER_B2B]))
 
 
 @router_v1.post('/users', status_code=status.HTTP_201_CREATED)
-async def create_user(user_create: UserCreate, session: SessionDep) -> UserRead:
+async def create_user(
+    request: Request,
+    user_create: UserCreate,
+    session: SessionDep,
+) -> UserRead:
+    await limit_signup_attempts(request)
     user = await UserService.create_user(session, user_create)
     return UserRead.model_validate(user)
 
 
 @router_v1.post('/auth/token')
 async def login(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: SessionDep,
 ) -> Token:
+    await limit_login_attempts(request, form_data.username)
     user = await UserService.authenticate_user(
         session, form_data.username, form_data.password
     )

@@ -31,6 +31,19 @@ async def create_order_endpoint(
     )
 
 
+@router_v1.get('/{order_id}', response_model=OrderResponse)
+async def get_order_details_endpoint(
+    order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Order:
+    return await OrderService.get_order_for_details(
+        session=session,
+        order_id=order_id,
+        current_user=current_user,
+    )
+
+
 @router_v1.post('/{order_id}/pay', response_model=OrderResponse)
 @idempotent()
 async def confirm_order_payment_endpoint(

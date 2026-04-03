@@ -82,10 +82,10 @@ class AdminPanelFormatter:
             return 'No docs'
         links = []
         if isinstance(docs, dict):
-            for doc_type, s3_key in docs.items():
+            for doc_type in docs.keys():
                 links.append(
-                    f'<a href="/api/v1/media/view?key={s3_key}" '
-                    f'target="_blank">{doc_type}</a>'
+                    f'<a href="/api/v1/media/view/verification_doc/{model.id}'
+                    f'?doc_key={doc_type}" target="_blank">{doc_type}</a>'
                 )
         return Markup(', '.join(links))
 
