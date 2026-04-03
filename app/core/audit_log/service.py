@@ -48,9 +48,19 @@ class AuditLogService:
     ) -> dict[str, Any]:
         diff: dict[str, Any] = {}
         if old_model is None and new_model is not None:
-            return {k: [None, v] for k, v in new_model.model_dump(mode='json').items()}
+            data = new_model.model_dump(mode='json')
+            return {
+                k: [None, ('[SENSITIVE_DATA_HIDDEN]' if k in SENSITIVE_FIELDS else v)]
+                for k, v in data.items()
+            }
+
         if old_model is not None and new_model is None:
-            return {k: [v, None] for k, v in old_model.model_dump(mode='json').items()}
+            data = old_model.model_dump(mode='json')
+            return {
+                k: [('[SENSITIVE_DATA_HIDDEN]' if k in SENSITIVE_FIELDS else v), None]
+                for k, v in data.items()
+            }
+
         if old_model is not None and new_model is not None:
             old_data = old_model.model_dump(mode='json')
             new_data = new_model.model_dump(mode='json')
@@ -58,8 +68,10 @@ class AuditLogService:
                 old_val = old_data.get(key)
                 if value != old_val:
                     if key in SENSITIVE_FIELDS:
-                        masked = '[SENSITIVE_DATA_HIDDEN]'
-                        diff[key] = [masked, masked]
+                        diff[key] = [
+                            '[SENSITIVE_DATA_HIDDEN]',
+                            '[SENSITIVE_DATA_HIDDEN]',
+                        ]
                     else:
                         diff[key] = [old_val, value]
             return diff
