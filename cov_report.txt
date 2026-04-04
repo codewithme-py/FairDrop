@@ -1,0 +1,67 @@
+Name                                   Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------
+app/__init__.py                            0      0   100%
+app/core/__init__.py                       0      0   100%
+app/core/admin/admin.py                  160      6    96%   68, 75, 129-132
+app/core/admin/admin_auth.py              41      8    80%   20, 25, 31-32, 45-48
+app/core/audit_log/models.py              19      0   100%
+app/core/audit_log/service.py             44      2    95%   31, 78
+app/core/auth_schemes.py                   3      0   100%
+app/core/config.py                        48      0   100%
+app/core/database.py                      14      2    86%   28-29
+app/core/exception_handlers.py            24      2    92%   51, 67
+app/core/exceptions.py                    27      0   100%
+app/core/hashing.py                       11      0   100%
+app/core/logging.py                       14      2    86%   21-22
+app/core/lua_scripts.py                    1      0   100%
+app/core/redis.py                          5      5     0%   1-8
+app/core/s3.py                            22      9    59%   29-45
+app/core/security.py                      55     17    69%   18-30, 36, 54, 56, 68, 70
+app/core/setup.py                         12      0   100%
+app/main.py                               75     18    76%   38-50, 89-91, 106, 111-112
+app/services/__init__.py                   0      0   100%
+app/services/buyer_user/__init__.py        0      0   100%
+app/services/buyer_user/routes.py         17      0   100%
+app/services/buyer_user/schemas.py        24      0   100%
+app/services/buyer_user/service.py        18      2    89%   26, 41
+app/services/external/__init__.py          0      0   100%
+app/services/external/routes.py           19      6    68%   26-27, 36-42
+app/services/external/schemas.py          15      0   100%
+app/services/external/service.py          14      0   100%
+app/services/inventory/__init__.py         0      0   100%
+app/services/inventory/deps.py             9      0   100%
+app/services/inventory/internal.py        42      0   100%
+app/services/inventory/models.py          46      0   100%
+app/services/inventory/routes.py          63     15    76%   60-66, 82, 92-98, 109-115, 125, 142, 169, 184, 199, 210-216, 231
+app/services/inventory/schemas.py         36      0   100%
+app/services/inventory/service.py        157      0   100%
+app/services/inventory/tasks.py           35      3    91%   23, 35, 46
+app/services/media/__init__.py             0      0   100%
+app/services/media/models.py              23      0   100%
+app/services/media/routes.py              33      0   100%
+app/services/media/schemas.py             18      0   100%
+app/services/media/service.py             60      0   100%
+app/services/media/tasks.py               40      3    92%   34-36
+app/services/orders/__init__.py            0      0   100%
+app/services/orders/internal.py           11      0   100%
+app/services/orders/models.py             43      0   100%
+app/services/orders/routes.py             27      3    89%   40, 56, 72
+app/services/orders/schemas.py            23      0   100%
+app/services/orders/service.py            85      0   100%
+app/services/payments/__init__.py          0      0   100%
+app/services/seller_user/__init__.py       0      0   100%
+app/services/seller_user/routes.py        21      4    81%   35, 44-45, 54
+app/services/seller_user/schemas.py       38      0   100%
+app/services/seller_user/service.py       42      0   100%
+app/services/user/__init__.py              0      0   100%
+app/services/user/models.py               64      0   100%
+app/services/user/routes.py               56      9    84%   40, 57, 68-70, 95-96, 107, 136
+app/services/user/schemas.py              40      0   100%
+app/services/user/service.py              94      0   100%
+app/shared/decorators.py                  42      0   100%
+app/shared/deps.py                        30      0   100%
+app/shared/rate_limit.py                  15      0   100%
+app/shared/rate_limit_utils.py             8      0   100%
+app/worker.py                             27      0   100%
+--------------------------------------------------------------------
+TOTAL                                   1910    116    94%

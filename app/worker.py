@@ -9,16 +9,29 @@ from app.services.media.tasks import sanitize_and_activate_image_task
 
 
 async def startup(ctx: dict) -> None:
-    engine = create_async_engine(str(settings.database_url))
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    ctx['session_maker'] = session_maker
-    logger.info('ARQ startup complete, session_maker added to ctx')
+    """Initialize resources for the worker."""
+    try:
+        engine = create_async_engine(
+            str(settings.database_url),
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
+        session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        ctx['session_maker'] = session_maker
+        logger.info(
+            'ARQ worker startup complete', database_url=settings.database_url_masked
+        )
+    except Exception as e:
+        logger.error('ARQ worker startup failed', error=str(e))
+        raise
 
 
 async def shutdown(ctx: dict) -> None:
-    engine = ctx['session_maker'].kw['bind']
-    await engine.dispose()
-    logger.info('ARQ shutdown complete, session_maker removed from ctx')
+    """Cleanup resources on worker shutdown."""
+    if 'session_maker' in ctx:
+        engine = ctx['session_maker'].kw['bind']
+        await engine.dispose()
+        logger.info('ARQ worker shutdown: database engine disposed')
 
 
 class WorkerSettings(RedisSettings):

@@ -11,6 +11,13 @@ class UserAlreadyExists(AppError):
     """User with such email already exists."""
 
 
+class SellerLimitExceededError(AppError):
+    """Seller product listing limit exceeded."""
+
+    def __init__(self, message: str = 'Seller product listing limit exceeded'):
+        super().__init__(message=message)
+
+
 class CredentialsError(AppError):
     """Invalid credentials."""
 

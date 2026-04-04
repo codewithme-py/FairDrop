@@ -39,10 +39,16 @@ class Settings(BaseSettings):
     max_file_size_bytes: int = Field(alias='MAX_FILE_SIZE_BYTES')
     secret_key: str = Field(alias='SECRET_KEY')
     debug_mode: bool = Field(default=False, alias='DEBUG_MODE')
+    unverified_seller_limit: int = 3
+    verified_seller_limit: int = 100
 
     @computed_field
     def database_url(self) -> str:
         return f'postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}'
+
+    @computed_field
+    def database_url_masked(self) -> str:
+        return f'postgresql+asyncpg://{self.db_user}:****@{self.db_host}:{self.db_port}/{self.db_name}'
 
 
 settings = Settings()

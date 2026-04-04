@@ -6,6 +6,7 @@ from .exception_handlers import (
     insufficient_inventory_error_handler,
     not_found_error_handler,
     permission_denied_handler,
+    seller_limit_exceeded_handler,
     user_already_exists_handler,
     verification_request_already_exists_handler,
 )
@@ -15,6 +16,7 @@ from .exceptions import (
     InsufficientInventoryError,
     NotFoundError,
     PermissionDeniedError,
+    SellerLimitExceededError,
     UserAlreadyExists,
     VerificationRequestAlreadyExists,
 )
@@ -36,4 +38,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         VerificationRequestAlreadyExists,
         verification_request_already_exists_handler,  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(
+        SellerLimitExceededError,
+        seller_limit_exceeded_handler,  # type: ignore[arg-type]
     )

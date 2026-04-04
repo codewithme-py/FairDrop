@@ -9,8 +9,7 @@ from app.services.inventory.models import Product
 
 
 async def test_reserve_flow(
-    async_client: AsyncClient,
-    db_session: AsyncSession,
+    async_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     test_email = f'{uuid4().hex[:8]}@example.com'
     test_password = 'super_secret_password'

@@ -1,5 +1,5 @@
 import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,7 +92,13 @@ class OrderService:
         reservation = reservation_result.scalar_one_or_none()
         if not reservation:
             raise NotFoundError
-        if reservation.expires_at < datetime.datetime.now(datetime.UTC):
+
+        exp_at = (
+            reservation.expires_at.replace(tzinfo=None)
+            if reservation.expires_at
+            else datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        )
+        if exp_at < datetime.datetime.now(datetime.UTC).replace(tzinfo=None):
             raise ConflictError
         if reservation.order_id is not None:
             raise ConflictError
@@ -104,6 +110,7 @@ class OrderService:
         if not product:
             raise NotFoundError
         create_order = Order(
+            id=uuid4(),
             user_id=current_user.id,
             total_amount=product.price * reservation.qty_reserved,
             status=OrderStatus.PENDING,
@@ -112,6 +119,7 @@ class OrderService:
         session.add(create_order)
         await session.flush()
         create_order_item = OrderItem(
+            id=uuid4(),
             order_id=create_order.id,
             product_id=reservation.product_id,
             product_name=product.name,

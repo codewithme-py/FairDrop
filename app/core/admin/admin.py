@@ -90,7 +90,7 @@ class AdminPanelFormatter:
         return Markup(', '.join(links))
 
 
-class VerificationRequestAdmin(ModelView, model=VerificationRequest):
+class VerificationRequestAdmin(AdminAccessMixin, model=VerificationRequest):
     column_list = [
         VerificationRequest.id,
         VerificationRequest.user_id,

@@ -30,7 +30,7 @@ router_v1 = APIRouter(prefix='/inventory', tags=['Inventory'])
 SELLER_DEPENDENCY = Depends(
     RoleChecker(
         allowed_roles=[UserRole.SELLER, UserRole.SELLER_B2B],
-        required_verified=True,
+        required_verified=False,
     )
 )
 ADMIN_DEPENDENCY = Depends(

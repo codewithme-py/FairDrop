@@ -12,6 +12,7 @@ from app.core.exceptions import (
     ConflictError,
     InsufficientInventoryError,
     NotFoundError,
+    SellerLimitExceededError,
 )
 from app.core.security import check_ownership
 from app.services.inventory.models import Product, ProductStatus, Reservation
@@ -22,10 +23,26 @@ from app.services.inventory.schemas import (
     ReservationCreate,
 )
 from app.services.orders.models import OrderStatus
-from app.services.user.models import User
+from app.services.user.models import User, UserRole
 
 
 class InventoryService:
+    @staticmethod
+    async def _check_seller_limit(session: AsyncSession, user: User) -> None:
+        """Check if the user has exceeded their product listing limit."""
+        if user.role in (UserRole.ADMIN, UserRole.MODERATOR):
+            return
+        query = select(Product).where(Product.owner_id == user.id)
+        result = await session.execute(query)
+        product_count = len(result.scalars().all())
+        limit = settings.unverified_seller_limit
+        if user.role in (UserRole.SELLER, UserRole.SELLER_B2B) and user.is_verified:
+            limit = settings.verified_seller_limit
+        if product_count >= limit:
+            raise SellerLimitExceededError(
+                f'Limit of {limit} products reached for your account type'
+            )
+
     @staticmethod
     async def _get_product(
         session: AsyncSession,
@@ -99,6 +116,7 @@ class InventoryService:
         product_data: ProductCreate,
         current_user: User,
     ) -> Product:
+        await InventoryService._check_seller_limit(session, current_user)
         new_product = Product(**product_data.model_dump())
         new_product.owner_id = owner_id
         session.add(new_product)

@@ -19,9 +19,11 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    price: Decimal | None = Field(gt=0, description='Price must be greater than 0')
+    price: Decimal | None = Field(
+        default=None, gt=0, description='Price must be greater than 0'
+    )
     qty_available: int | None = Field(
-        ge=0, description='Quantity must be greater than or equal to 0'
+        default=None, ge=0, description='Quantity must be greater than or equal to 0'
     )
 
 
