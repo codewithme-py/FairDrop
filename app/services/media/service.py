@@ -48,7 +48,8 @@ async def get_secure_file_path(
         )
         v_req = result_v.scalar_one_or_none()
         if v_req and v_req.docs_url and doc_key:
-            return str(v_req.docs_url.get(doc_key))
+            doc_val = v_req.docs_url.get(doc_key)
+            return str(doc_val) if doc_val else None
     elif target_type == 'product_image':
         result_i = await session.execute(
             select(ProductImage).where(ProductImage.id == target_id)
@@ -110,10 +111,12 @@ async def handle_minio_webhook(
     event: MinioWebhookEvent,
     arq_redis: Any = None,
 ) -> None:
+    """Processes MinIO S3:ObjectCreated events with idempotency and robust errors."""
     if not event.records:
         return
     for record in event.records:
         if not record.event_name.startswith('s3:ObjectCreated:'):
+            logger.debug('skipping non-create event', event_name=record.event_name)
             continue
         object_key = unquote(record.s3.object.key)
         result = await session.execute(
@@ -122,17 +125,29 @@ async def handle_minio_webhook(
             .where(ProductImage.file_path == object_key)
         )
         image = result.scalar_one_or_none()
-        if image is not None and image.status == ImageStatus.PENDING:
-            # Point 3: Enqueue background sanitization task
-            if arq_redis:
-                await arq_redis.enqueue_job(
-                    'sanitize_and_activate_image_task',
-                    image_id=image.id,
-                    bucket=settings.minio_bucket_name,
-                    object_key=object_key,
-                )
-                logger.info('enqueued image sanitization task', key=object_key)
-            else:
-                logger.warning('arq_redis pool not provided to webhook handler')
-        else:
-            logger.warning('image not found or not in pending status')
+        if image is None:
+            logger.warning('image record not found in DB for S3 event', key=object_key)
+            continue
+        if image.status != ImageStatus.PENDING:
+            logger.info(
+                'skipping webhook: image not in pending status',
+                key=object_key,
+                current_status=image.status,
+            )
+            continue
+        if not arq_redis:
+            logger.error(
+                'CRITICAL: arq_redis pool missing, cannot enqueue sanitization',
+                key=object_key,
+            )
+            continue
+        await arq_redis.enqueue_job(
+            'sanitize_and_activate_image_task',
+            image_id=image.id,
+            bucket=settings.minio_bucket_name,
+            object_key=object_key,
+        )
+        logger.info(
+            'enqueued image sanitization task', image_id=image.id, key=object_key
+        )
+    await session.commit()

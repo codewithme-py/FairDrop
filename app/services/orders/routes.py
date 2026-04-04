@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Body, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -19,7 +19,7 @@ router_v1 = APIRouter(prefix='/orders', tags=['Orders'])
 @idempotent()
 async def create_order_endpoint(
     request: Request,
-    order_data: OrderCreate,
+    order_data: Annotated[OrderCreate, Body(...)],
     x_idempotency_key: Annotated[str, Header(...)],
     session: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],

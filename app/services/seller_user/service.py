@@ -47,7 +47,7 @@ async def get_my_orders(
     stmt = (
         select(Order)
         .where(Order.id.in_(order_ids))
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items).selectinload(OrderItem.product))
         .order_by(Order.created_at.desc())
     )
     result = await session.execute(stmt)

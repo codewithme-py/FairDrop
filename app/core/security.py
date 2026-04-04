@@ -61,9 +61,12 @@ async def check_permission(
 def check_ownership(user: User, obj: Any) -> None:
     if user.role in (UserRole.ADMIN, UserRole.MODERATOR):
         return
-    if not hasattr(obj, 'owner_id'):
-        raise ValueError(f'Object {type(obj)} does not have owner_id')
-    if obj.owner_id != user.id:
+    owner_attr = 'owner_id'
+    if not hasattr(obj, 'owner_id') and hasattr(obj, 'user_id'):
+        owner_attr = 'user_id'
+    if not hasattr(obj, owner_attr):
+        raise ValueError(f'Object {type(obj)} does not have owner_id or user_id')
+    if getattr(obj, owner_attr) != user.id:
         raise PermissionDeniedError
 
 

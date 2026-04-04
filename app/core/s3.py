@@ -1,20 +1,20 @@
-import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
 import aioboto3  # type: ignore
+import structlog
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 session = aioboto3.Session()
 
 
 @asynccontextmanager
-async def get_s3_client() -> AsyncGenerator[Any, None]:
+async def get_s3_client() -> AsyncIterator[Any]:
     async with session.client(
         's3',
         endpoint_url=settings.minio_url,

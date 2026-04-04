@@ -15,6 +15,7 @@ class ImageStatus(StrEnum):
     PENDING = 'pending'
     ACTIVE = 'active'
     INACTIVE = 'inactive'
+    FAILED = 'failed'
 
 
 class ProductImage(Base):

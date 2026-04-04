@@ -39,7 +39,9 @@ class Order(Base):
         Numeric(DECIMAL_PRECISION, DECIMAL_SCALE), nullable=False
     )
     shipping_address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), default=datetime.now
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
@@ -73,7 +75,9 @@ class OrderItem(Base):
     price: Mapped[Decimal] = mapped_column(
         Numeric(DECIMAL_PRECISION, DECIMAL_SCALE), nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), default=datetime.now
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )

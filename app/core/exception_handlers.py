@@ -7,6 +7,7 @@ from .exceptions import (
     InsufficientInventoryError,
     NotFoundError,
     PermissionDeniedError,
+    SellerLimitExceededError,
     UserAlreadyExists,
     VerificationRequestAlreadyExists,
 )
@@ -75,4 +76,13 @@ async def verification_request_already_exists_handler(
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={'detail': str(exc) or 'Verification request already exists'},
+    )
+
+
+async def seller_limit_exceeded_handler(
+    request: Request, exc: SellerLimitExceededError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={'detail': str(exc) or 'Seller limit exceeded'},
     )

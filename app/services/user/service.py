@@ -88,17 +88,22 @@ class UserService:
     ) -> tuple[APIKeyB2BPartner, str]:
         raw_key = secrets.token_urlsafe(URLSAFE_PARAM)
         key_prefix = raw_key[:KEY_LENGTH_PREFIX]
-        hashed_key = await get_password_hash(raw_key)
-        create_api_key_b2b_partner = APIKeyB2BPartner(
+
+        from app.core.hashing import get_password_hash_sync
+
+        hashed_key = get_password_hash_sync(raw_key)
+
+        api_key_obj = APIKeyB2BPartner(
             user_id=user_id,
             name=name,
             key_prefix=key_prefix,
             hashed_key=hashed_key,
         )
-        session.add(create_api_key_b2b_partner)
+
+        session.add(api_key_obj)
         await session.commit()
-        await session.refresh(create_api_key_b2b_partner)
-        return create_api_key_b2b_partner, raw_key
+        await session.refresh(api_key_obj)
+        return api_key_obj, raw_key
 
     @staticmethod
     async def authenticate_api_key_b2b_partner(
@@ -109,15 +114,19 @@ class UserService:
             select(APIKeyB2BPartner)
             .options(joinedload(APIKeyB2BPartner.user))
             .where(
-                APIKeyB2BPartner.key_prefix == key_prefix,
-                APIKeyB2BPartner.is_active,
+                APIKeyB2BPartner.key_prefix == key_prefix, APIKeyB2BPartner.is_active
             )
         )
-        api_key = result.scalar_one_or_none()
-        if api_key and await verify_password(raw_key, api_key.hashed_key):
-            api_key.last_used_at = datetime.now(UTC)
-            await session.commit()
-            return api_key
+        api_keys = result.scalars().all()
+
+        from app.core.hashing import verify_password
+
+        for api_key in api_keys:
+            if await verify_password(raw_key, api_key.hashed_key):
+                # Update last used
+                api_key.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+                await session.commit()
+                return api_key
         return None
 
     @staticmethod
