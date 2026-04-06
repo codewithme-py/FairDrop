@@ -64,10 +64,12 @@ class DeterministicMockSession:
     async def execute(self, stmt: Any) -> Any:
         res_obj = self.responses.popleft() if self.responses else None
         res = MagicMock()
+        res.unique.return_value = res
+        res.scalars.return_value = res
         res.scalar_one_or_none.return_value = res_obj
         res.scalar_one.return_value = res_obj
         res.scalar.return_value = res_obj
-        res.scalars.return_value.all.return_value = (
+        res.all.return_value = (
             res_obj if isinstance(res_obj, list) else [res_obj] if res_obj else []
         )
         res.with_for_update.return_value = res

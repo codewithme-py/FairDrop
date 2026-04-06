@@ -28,7 +28,7 @@ from app.services.user.service import UserService
 async def sample_user(db_session: Any) -> Any:
     user = User(
         id=uuid4(),
-        email=f'usr_{uuid4().hex[:4]}@mail.com',
+        email=f'usr_{uuid4().hex}@mail.com',
         password_hash=await get_password_hash('password123'),
         role=UserRole.USER,
     )
@@ -40,7 +40,7 @@ async def sample_user(db_session: Any) -> Any:
 
 @pytest.mark.asyncio
 async def test_create_user_success(db_session: Any) -> None:
-    email = f'new_{uuid4().hex[:4]}@mail.com'
+    email = f'new_{uuid4().hex}@mail.com'
     user_create = UserCreate(email=email, password='secure!')
     user = await UserService.create_user(db_session, user_create)
     assert user.email == email
@@ -84,12 +84,8 @@ async def test_create_and_refresh_access_token(
 ) -> None:
     token = await UserService.create_refresh_token(db_session, sample_user.id)
     assert token is not None
-
-    # Refresh token
     user = await UserService.refresh_access_token(db_session, token)
     assert user.id == sample_user.id
-
-    # Verify token is deleted
     res = await db_session.execute(
         select(RefreshToken).where(RefreshToken.token == token)
     )

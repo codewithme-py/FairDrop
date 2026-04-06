@@ -1,10 +1,11 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 
 from app.core.config import settings
 from app.core.database import SessionDep
+from app.core.s3 import get_s3_client_gen
 from app.core.security import RoleChecker, UserRole
 from app.services.inventory.models import ProductStatus
 from app.services.inventory.schemas import (
@@ -15,6 +16,7 @@ from app.services.inventory.schemas import (
     ReservationResponse,
 )
 from app.services.inventory.service import InventoryAdminService, InventoryService
+from app.services.media.service import generate_presigned_get_url
 from app.services.user.models import User
 from app.shared.decorators import idempotent
 from app.shared.deps import get_current_user
@@ -50,10 +52,24 @@ ADMIN_AND_SELLER_DEPENDENCY = Depends(
 )
 
 
+async def _enrich_product_images(product: Any, s3_client: Any) -> ProductRead:
+    """Helper to generate presigned URLs for product images."""
+    read_obj = ProductRead.model_validate(product)
+    image_urls = []
+    if hasattr(product, 'images'):
+        for img in product.images:
+            if img.status == 'active':
+                url = await generate_presigned_get_url(s3_client, img.file_path)
+                image_urls.append(url)
+    read_obj.image_urls = image_urls
+    return read_obj
+
+
 @router_v1.get('/', response_model=list[ProductRead])
 async def get_active_products(
     session: SessionDep,
     service: Annotated[InventoryService, Depends(get_inventory_service)],
+    s3_client: Any = Depends(get_s3_client_gen),
     skip: int = 0,
     limit: int = 50,
 ) -> list[ProductRead]:
@@ -63,7 +79,7 @@ async def get_active_products(
         limit=limit,
         session=session,
     )
-    return [ProductRead.model_validate(p) for p in products]
+    return [await _enrich_product_images(p, s3_client) for p in products]
 
 
 @router_v1.post('/', response_model=ProductRead, status_code=status.HTTP_201_CREATED)
@@ -134,12 +150,13 @@ async def get_product(
     product_id: UUID,
     session: SessionDep,
     service: Annotated[InventoryService, Depends(get_inventory_service)],
+    s3_client: Any = Depends(get_s3_client_gen),
 ) -> ProductRead:
     product = await service.get_product(
         session=session,
         product_id=product_id,
     )
-    return ProductRead.model_validate(product)
+    return await _enrich_product_images(product, s3_client)
 
 
 @router_v1.post('/reserve', response_model=ReservationResponse)

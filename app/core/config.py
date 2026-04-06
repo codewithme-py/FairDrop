@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     minio_root_password: str = Field(alias='MINIO_ROOT_PASSWORD')
     minio_bucket_name: str = Field(alias='MINIO_BUCKET_NAME')
     minio_url: str = Field(alias='MINIO_URL')
+    s3_public_url: str = Field(alias='S3_PUBLIC_URL')
     pool_size: int = Field(alias='POOL_SIZE')
     max_overflow: int = Field(alias='MAX_OVERFLOW')
     jwt_algorithm: str = Field(default='HS256', alias='JWT_ALGORITHM')

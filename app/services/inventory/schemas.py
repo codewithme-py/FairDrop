@@ -37,6 +37,7 @@ class ProductRead(BaseModel):
     status: ProductStatus
     created_at: datetime
     updated_at: datetime
+    image_urls: list[str] = []
 
 
 class ReservationCreate(BaseModel):

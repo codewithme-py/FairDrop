@@ -174,3 +174,28 @@ class UserService:
         await session.commit()
         await session.refresh(verification_request)
         return verification_request
+
+    @staticmethod
+    async def get_verification_requests(
+        session: AsyncSession,
+        user_id: UUID,
+    ) -> list[VerificationRequest]:
+        result = await session.execute(
+            select(VerificationRequest)
+            .where(VerificationRequest.user_id == user_id)
+            .order_by(VerificationRequest.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_latest_verification_request(
+        session: AsyncSession,
+        user_id: UUID,
+    ) -> VerificationRequest | None:
+        result = await session.execute(
+            select(VerificationRequest)
+            .where(VerificationRequest.user_id == user_id)
+            .order_by(VerificationRequest.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()

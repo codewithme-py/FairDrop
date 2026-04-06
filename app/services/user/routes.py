@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
@@ -133,4 +133,32 @@ async def create_upgrade_request(
         target_role=schema.target_role,
         docs_url=schema.docs_url,
     )
+    return VerificationRequestRead.model_validate(verification_request)
+
+
+@router_v1.get(
+    '/users/me/upgrade-requests', response_model=list[VerificationRequestRead]
+)
+async def get_upgrade_requests(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: SessionDep,
+) -> list[VerificationRequestRead]:
+    requests = await UserService.get_verification_requests(session, current_user.id)
+    return [VerificationRequestRead.model_validate(req) for req in requests]
+
+
+@router_v1.get(
+    '/users/me/upgrade-requests/latest', response_model=VerificationRequestRead
+)
+async def get_latest_upgrade_request(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: SessionDep,
+) -> VerificationRequestRead:
+    verification_request = await UserService.get_latest_verification_request(
+        session, current_user.id
+    )
+    if not verification_request:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='No upgrade requests found'
+        )
     return VerificationRequestRead.model_validate(verification_request)

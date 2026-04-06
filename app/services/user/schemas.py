@@ -49,12 +49,15 @@ class APIKeyWithSecret(APIKeyRead):
 
 
 class VerificationRequestCreate(BaseModel):
-    target_role: Literal[UserRole.USER_B2B, UserRole.SELLER_B2B]
+    target_role: Literal[UserRole.USER_B2B, UserRole.SELLER_B2B, UserRole.SELLER]
     docs_url: dict[str, str] | None = None
 
 
 class VerificationRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
+    target_role: UserRole
     status: VerificationStatus
+    admin_feedback: str | None = None
     created_at: datetime
+    updated_at: datetime
