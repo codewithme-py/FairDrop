@@ -24,8 +24,37 @@ async def generate_presigned_get_url(
     key: str,
     expires_in: int = 3600,
 ) -> str:
-    """Generates a presigned GET URL for reading private files."""
-    return cast(
+    """
+    Generates a presigned GET URL for reading private files with host substitution.
+    """
+    logger.debug(
+        'generating s3 url',
+        input_key=key,
+        current_bucket=settings.minio_bucket_name,
+    )
+    original_key = key
+    if '://' in key:
+        parts = key.split('/', 3)
+        if len(parts) >= 4:
+            key = parts[3]
+    bucket_candidates = [
+        settings.minio_bucket_name,
+        's3_fairdrop-media',
+        's3-fairdrop-media',
+    ]
+    while True:
+        key = key.lstrip('/')
+        stripped = False
+        for b in bucket_candidates:
+            if key.startswith(f'{b}/'):
+                key = key[len(b) + 1 :]
+                stripped = True
+        if not stripped:
+            break
+    key = key.lstrip('/')
+    if key != original_key:
+        logger.debug('sanitized s3 key', original=original_key, sanitized=key)
+    url = cast(
         str,
         await s3_client.generate_presigned_url(
             'get_object',
@@ -33,6 +62,9 @@ async def generate_presigned_get_url(
             ExpiresIn=expires_in,
         ),
     )
+    if settings.minio_url != settings.s3_public_url:
+        url = url.replace(settings.minio_url, settings.s3_public_url)
+    return url
 
 
 async def get_secure_file_path(

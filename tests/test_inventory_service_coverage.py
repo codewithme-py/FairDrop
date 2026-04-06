@@ -15,7 +15,7 @@ from app.services.user.models import User, UserRole
 async def sample_seller(db_session: Any) -> Any:
     u = User(
         id=uuid4(),
-        email=f'seller_{uuid4().hex[:4]}@mail.com',
+        email=f'seller_{uuid4().hex}@mail.com',
         password_hash='h',
         role=UserRole.SELLER,
     )
@@ -29,7 +29,7 @@ async def sample_seller(db_session: Any) -> Any:
 async def sample_moderator(db_session: Any) -> Any:
     u = User(
         id=uuid4(),
-        email=f'mod_{uuid4().hex[:4]}@mail.com',
+        email=f'mod_{uuid4().hex}@mail.com',
         password_hash='h',
         role=UserRole.MODERATOR,
     )
@@ -75,7 +75,6 @@ async def draft_product(db_session: Any, sample_seller: Any) -> Any:
 async def test_submit_for_moderation_conflict(
     db_session: Any, sample_product: Any, sample_seller: Any
 ) -> None:
-    # product is ACTIVE, not DRAFT/REJECTED
     with pytest.raises(ConflictError):
         await InventoryService.submit_for_moderation(
             db_session, sample_product.id, sample_seller
@@ -97,7 +96,6 @@ async def test_reserve_items_product_not_found(
 async def test_claim_for_moderation_conflict(
     db_session: Any, sample_product: Any, sample_moderator: Any
 ) -> None:
-    # product is ACTIVE, not PENDING_MODERATION
     with pytest.raises(ConflictError):
         await InventoryAdminService.claim_for_moderation(
             db_session, sample_product.id, sample_moderator
@@ -108,7 +106,6 @@ async def test_claim_for_moderation_conflict(
 async def test_approve_product_conflict(
     db_session: Any, draft_product: Any, sample_moderator: Any
 ) -> None:
-    # product is DRAFT, not MODERATION_IN_PROGRESS
     with pytest.raises(ConflictError):
         await InventoryAdminService.approve_product(
             db_session, draft_product.id, sample_moderator
@@ -119,7 +116,6 @@ async def test_approve_product_conflict(
 async def test_reject_product_conflict(
     db_session: Any, draft_product: Any, sample_moderator: Any
 ) -> None:
-    # product is DRAFT, not MODERATION_IN_PROGRESS
     with pytest.raises(ConflictError):
         await InventoryAdminService.reject_product(
             db_session, draft_product.id, sample_moderator, 'bad product'

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log.service import audit_log_service
 from app.core.database import get_session
-from app.core.s3 import get_s3_client
+from app.core.s3 import get_s3_client_gen
 from app.services.media.schemas import (
     ImageUploadRequest,
     ImageUploadResponse,
@@ -21,7 +21,7 @@ from app.services.media.service import (
     handle_minio_webhook,
 )
 from app.services.user.models import User, UserRole
-from app.shared.deps import get_current_user
+from app.shared.deps import get_current_user, get_current_user_flexible
 
 router_v1 = APIRouter(prefix='/media', tags=['Media'])
 
@@ -31,7 +31,7 @@ async def create_upload_url(
     product_id: UUID,
     req: ImageUploadRequest,
     session: AsyncSession = Depends(get_session),
-    s3_client: Any = Depends(get_s3_client),
+    s3_client: Any = Depends(get_s3_client_gen),
     current_user: User = Depends(get_current_user),
 ) -> ImageUploadResponse:
     return await generate_upload_url(session, s3_client, product_id, req)
@@ -53,8 +53,8 @@ async def view_private_file(
     target_id: UUID,
     doc_key: str | None = None,
     session: AsyncSession = Depends(get_session),
-    s3_client: Any = Depends(get_s3_client),
-    current_user: User = Depends(get_current_user),
+    s3_client: Any = Depends(get_s3_client_gen),
+    current_user: User = Depends(get_current_user_flexible),
 ) -> RedirectResponse:
     if current_user.role not in (UserRole.ADMIN, UserRole.MODERATOR):
         raise HTTPException(

@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.audit_log.service import audit_log_service
 from app.core.config import settings
@@ -53,8 +54,10 @@ class InventoryService:
         query = select(Product).where(Product.id == product_id)
         if for_update:
             query = query.with_for_update()
+        else:
+            query = query.options(joinedload(Product.images))
         result = await session.execute(query)
-        product = result.scalar_one_or_none()
+        product = result.unique().scalar_one_or_none()
         if not product:
             raise NotFoundError
         if current_user:
@@ -142,9 +145,17 @@ class InventoryService:
         product = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
         )
+        if product.status in (
+            ProductStatus.PENDING_MODERATION,
+            ProductStatus.MODERATION_IN_PROGRESS,
+        ):
+            raise ConflictError('Cannot edit product while it is under moderation')
         old_snapshot = ProductRead.model_validate(product)
         for field, value in product_data.model_dump(exclude_unset=True).items():
             setattr(product, field, value)
+        if product.status == ProductStatus.ACTIVE:
+            product.status = ProductStatus.PENDING_MODERATION
+            product.moderator_id = None
         await InventoryService._log_product_change(
             session=session,
             user=current_user,
@@ -187,11 +198,11 @@ class InventoryService:
         skip: int = 0,
         limit: int = 50,
     ) -> list[Product]:
-        query = select(Product)
+        query = select(Product).options(joinedload(Product.images))
         if status:
             query = query.where(Product.status == status)
         result = await session.execute(query.offset(skip).limit(limit))
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
 
     @staticmethod
     async def reserve_items(

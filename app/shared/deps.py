@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from jose import JWTError, jwt
 from sqlalchemy import select
 
-from app.core.auth_schemes import header_scheme, oauth2_scheme
+from app.core.auth_schemes import header_scheme, oauth2_scheme, oauth2_scheme_optional
 from app.core.config import settings
 from app.core.database import SessionDep
 from app.core.exceptions import CredentialsError, PermissionDeniedError
@@ -30,6 +30,26 @@ async def get_current_user(
         return user
     except JWTError:
         raise CredentialsError()
+
+
+async def get_current_user_flexible(
+    request: Request,
+    session: SessionDep,
+    token: str | None = Depends(oauth2_scheme_optional),
+) -> User:
+    if token:
+        try:
+            return await get_current_user(token, session)
+        except CredentialsError:
+            pass
+    user_id = request.session.get('token')
+    if user_id:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            return user
+
+    raise CredentialsError()
 
 
 async def get_api_key_user(
