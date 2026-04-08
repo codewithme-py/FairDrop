@@ -2,6 +2,8 @@
 
 [![Workflow Status](https://github.com/codewithme-py/FairDrop/actions/workflows/ci.yaml/badge.svg)](https://github.com/codewithme-py/FairDrop/actions/workflows/ci.yaml)
 
+[![LookUp wiki](https://img.shields.io/badge/LookUp-wiki-2ea44f?style=flat&labelColor=2A2E33)](https://github.com/codewithme-py/FairDrop/wiki)
+
 <details>
 <summary> Описание на русском</summary>
 
