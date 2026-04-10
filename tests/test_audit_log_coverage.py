@@ -19,6 +19,7 @@ class MockModel(BaseModel):
 
 @pytest.mark.asyncio
 async def test_get_diff_create() -> None:
+    """Verify AuditLogService.get_diff correctly captures creation changes."""
     new_model = MockModel(
         id='1', email='test@test.com', shipping_address='Street 1', status='active'
     )
@@ -31,11 +32,11 @@ async def test_get_diff_create() -> None:
 
 @pytest.mark.asyncio
 async def test_get_diff_delete() -> None:
+    """Verify AuditLogService.get_diff correctly captures deletion changes."""
     old_model = MockModel(
         id='1', email='test@test.com', shipping_address='Street 1', status='active'
     )
     diff = AuditLogService.get_diff(old_model, None)
-
     assert diff['id'] == ['1', None]
     assert diff['email'] == ['[SENSITIVE_DATA_HIDDEN]', None]
     assert diff['shipping_address'] == ['[SENSITIVE_DATA_HIDDEN]', None]
@@ -43,15 +44,14 @@ async def test_get_diff_delete() -> None:
 
 @pytest.mark.asyncio
 async def test_get_diff_update() -> None:
+    """Verify AuditLogService.get_diff only reports changed fields and hides PII."""
     old_m = MockModel(
         id='1', email='test@test.com', shipping_address='Street 1', status='pending'
     )
     new_m = MockModel(
         id='1', email='test@test.com', shipping_address='Street 2', status='active'
     )
-
     diff = AuditLogService.get_diff(old_m, new_m)
-
     assert 'id' not in diff
     assert 'email' not in diff
     assert diff['status'] == ['pending', 'active']
@@ -63,13 +63,12 @@ async def test_get_diff_update() -> None:
 
 @pytest.mark.asyncio
 async def test_log_pii_access(db_session: Any) -> None:
+    """Verify PII access events are logged with actor, target, and reason details."""
     u_id = uuid4()
     actor = User(id=u_id, email=f'actor_{uuid4()}@test.com', password_hash='...')
     db_session.add(actor)
     await db_session.commit()
-
     target_id = uuid4()
-
     await audit_log_service.log_pii_access(
         session=db_session,
         actor_id=u_id,
@@ -78,11 +77,9 @@ async def test_log_pii_access(db_session: Any) -> None:
         reason='test_reason',
     )
     await db_session.commit()
-
     stmt = select(AuditLog).where(AuditLog.target_id == str(target_id))
     result = await db_session.execute(stmt)
     log = result.scalar_one()
-
     assert log.action == 'pii_access'
     assert str(log.actor_id) == str(u_id)
     assert log.changes['reason'] == 'test_reason'

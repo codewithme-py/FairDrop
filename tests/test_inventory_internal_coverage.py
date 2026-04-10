@@ -20,6 +20,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def sample_user(db_session: Any) -> Any:
+    """Create a sample seller user for inventory internal tests."""
     user = User(
         id=uuid4(),
         email=f'test_{uuid4().hex[:4]}@mail.com',
@@ -34,6 +35,7 @@ async def sample_user(db_session: Any) -> Any:
 
 @pytest.fixture
 async def sample_product(db_session: Any, sample_user: Any) -> Any:
+    """Create a sample product for inventory internal tests."""
     product = Product(
         name='Test Product',
         price=Decimal('10.00'),
@@ -48,6 +50,7 @@ async def sample_product(db_session: Any, sample_user: Any) -> Any:
 
 @pytest.fixture
 async def sample_order(db_session: Any, sample_user: Any) -> Any:
+    """Create a sample pending order for inventory internal tests."""
     order = Order(
         id=uuid4(),
         user_id=sample_user.id,
@@ -64,6 +67,7 @@ async def sample_order(db_session: Any, sample_user: Any) -> Any:
 async def sample_reservation(
     db_session: Any, sample_product: Any, sample_user: Any
 ) -> Any:
+    """Create a sample pending reservation without an associated order."""
     res = Reservation(
         id=uuid4(),
         product_id=sample_product.id,
@@ -84,6 +88,7 @@ async def sample_reservation(
 async def reservation_with_order(
     db_session: Any, sample_product: Any, sample_user: Any, sample_order: Any
 ) -> Any:
+    """Create a sample pending reservation associated with an order."""
     res = Reservation(
         id=uuid4(),
         product_id=sample_product.id,
@@ -104,6 +109,7 @@ async def reservation_with_order(
 async def test_mark_reservation_as_completed_success(
     db_session: Any, sample_reservation: Any
 ) -> None:
+    """Verify mark_reservation_as_completed sets status to COMPLETED."""
     await mark_reservation_as_completed(db_session, sample_reservation.id)
     await db_session.commit()
     await db_session.refresh(sample_reservation)
@@ -112,6 +118,7 @@ async def test_mark_reservation_as_completed_success(
 
 @pytest.mark.asyncio
 async def test_mark_reservation_as_completed_not_found(db_session: Any) -> None:
+    """Verify NotFoundError for missing reservation."""
     with pytest.raises(NotFoundError):
         await mark_reservation_as_completed(db_session, uuid4())
 
@@ -120,6 +127,7 @@ async def test_mark_reservation_as_completed_not_found(db_session: Any) -> None:
 async def test_mark_reservation_by_order_as_completed_success(
     db_session: Any, reservation_with_order: Any
 ) -> None:
+    """Verify order-linked reservation status set to COMPLETED."""
     await mark_reservation_by_order_as_completed(
         db_session, reservation_with_order.order_id
     )
@@ -132,6 +140,7 @@ async def test_mark_reservation_by_order_as_completed_success(
 async def test_mark_reservation_by_order_as_completed_not_found(
     db_session: Any,
 ) -> None:
+    """Verify NotFoundError for missing order."""
     with pytest.raises(NotFoundError):
         await mark_reservation_by_order_as_completed(db_session, uuid4())
 
@@ -140,6 +149,7 @@ async def test_mark_reservation_by_order_as_completed_not_found(
 async def test_cancel_reservation_and_return_stock_success(
     db_session: Any, sample_reservation: Any, sample_product: Any
 ) -> None:
+    """Verify cancellation restores stock and marks reservation cancelled."""
     initial_qty = sample_product.qty_available
     await cancel_reservation_and_return_stock(db_session, sample_reservation.id)
     await db_session.commit()
@@ -152,6 +162,7 @@ async def test_cancel_reservation_and_return_stock_success(
 
 @pytest.mark.asyncio
 async def test_cancel_reservation_and_return_stock_not_found(db_session: Any) -> None:
+    """Verify NotFoundError for missing reservation on cancel."""
     with pytest.raises(NotFoundError):
         await cancel_reservation_and_return_stock(db_session, uuid4())
 
@@ -160,6 +171,7 @@ async def test_cancel_reservation_and_return_stock_not_found(db_session: Any) ->
 async def test_cancel_reservation_by_order_and_return_stock_success(
     db_session: Any, reservation_with_order: Any, sample_product: Any
 ) -> None:
+    """Verify order-linked reservation cancel restores stock."""
     initial_qty = sample_product.qty_available
     await cancel_reservation_by_order_and_return_stock(
         db_session, reservation_with_order.order_id
@@ -177,6 +189,7 @@ async def test_cancel_reservation_by_order_and_return_stock_success(
 async def test_cancel_reservation_by_order_and_return_stock_not_found(
     db_session: Any,
 ) -> None:
+    """Verify NotFoundError for missing order on cancel."""
     with pytest.raises(NotFoundError):
         await cancel_reservation_by_order_and_return_stock(db_session, uuid4())
 
@@ -185,10 +198,12 @@ async def test_cancel_reservation_by_order_and_return_stock_not_found(
 async def test_ensure_product_exists_success(
     db_session: Any, sample_product: Any
 ) -> None:
+    """Verify ensure_product_exists passes without error for an existing product."""
     await ensure_product_exists(db_session, sample_product.id)
 
 
 @pytest.mark.asyncio
 async def test_ensure_product_exists_not_found(db_session: Any) -> None:
+    """Verify ensure_product_exists raises NotFoundError for a nonexistent product."""
     with pytest.raises(NotFoundError):
         await ensure_product_exists(db_session, uuid4())

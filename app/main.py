@@ -35,6 +35,17 @@ logger = structlog.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Manage application lifecycle.
+
+    Initialize and clean up Redis, ARQ, and S3 resources.
+
+    Args:
+        app: The FastAPI application instance.
+
+    Yields:
+        None: Yields control back to the FastAPI lifespan handler.
+    """
     client = Redis.from_url(settings.redis_url, decode_responses=True, encoding='utf-8')
     app.state.redis = client
     app.state.rate_limit_script = client.register_script(RATE_LIMIT_LUA_SCRIPT)
@@ -78,6 +89,19 @@ app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 async def add_request_context(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
+    """
+    Attach a unique request ID and remote IP to the structured logging context.
+
+    Args:
+        request: The incoming HTTP request.
+        call_next: The next middleware or route handler in the chain.
+
+    Returns:
+        The HTTP response with an X-Request-ID header added.
+
+    Raises:
+        Exception: Re-raises any exception from downstream handlers after logging.
+    """
     request_id = str(uuid.uuid4())
     bind_contextvars(
         request_id=request_id,
@@ -103,10 +127,22 @@ app.include_router(external_router_v1, prefix='/api/v1', tags=['Partner API'])
 
 @app.get('/health')
 def health() -> dict[str, str]:
+    """
+    Health check endpoint.
+
+    Returns:
+        A dictionary with a status key indicating service health.
+    """
     return {'status': 'ok'}
 
 
 @app.get('/')
 def root() -> dict[str, str]:
+    """
+    Root endpoint for basic connectivity verification.
+
+    Returns:
+        A dictionary with a greeting message.
+    """
     logger.info('root health check')
     return {'message': 'Hello from fairdrop!'}

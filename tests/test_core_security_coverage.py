@@ -17,6 +17,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.mark.asyncio
 async def test_get_b2b_partner_by_api_key_empty() -> None:
+    """Verify get_b2b_partner_by_api_key raises error for empty API key."""
     with pytest.raises(CredentialsError, match='API key is required'):
         await get_b2b_partner_by_api_key(None, MagicMock())
 
@@ -27,6 +28,7 @@ async def test_get_b2b_partner_by_api_key_empty() -> None:
     new_callable=AsyncMock,
 )
 async def test_get_b2b_partner_by_api_key_invalid(mock_auth: Any) -> None:
+    """Verify get_b2b_partner_by_api_key raises error for an invalid API key."""
     mock_auth.return_value = None
     with pytest.raises(CredentialsError, match='Invalid API key'):
         await get_b2b_partner_by_api_key('bad_key', MagicMock())
@@ -38,6 +40,7 @@ async def test_get_b2b_partner_by_api_key_invalid(mock_auth: Any) -> None:
     new_callable=AsyncMock,
 )
 async def test_get_b2b_partner_by_api_key_inactive(mock_auth: Any) -> None:
+    """Verify get_b2b_partner_by_api_key raises error for an inactive user."""
     u = User(is_active=False)
     mo = MagicMock()
     mo.user = u
@@ -52,6 +55,7 @@ async def test_get_b2b_partner_by_api_key_inactive(mock_auth: Any) -> None:
     new_callable=AsyncMock,
 )
 async def test_get_b2b_partner_by_api_key_wrong_role(mock_auth: Any) -> None:
+    """Verify get_b2b_partner_by_api_key raises error for non-B2B role."""
     u = User(is_active=True, role=UserRole.USER)
     mo = MagicMock()
     mo.user = u
@@ -66,6 +70,7 @@ async def test_get_b2b_partner_by_api_key_wrong_role(mock_auth: Any) -> None:
     new_callable=AsyncMock,
 )
 async def test_get_b2b_partner_by_api_key_success(mock_auth: Any) -> None:
+    """Verify get_b2b_partner_by_api_key returns the user for valid B2B credentials."""
     u = User(is_active=True, role=UserRole.SELLER_B2B)
     mo = MagicMock()
     mo.user = u
@@ -75,23 +80,24 @@ async def test_get_b2b_partner_by_api_key_success(mock_auth: Any) -> None:
 
 
 def test_create_access_token_expires_delta() -> None:
+    """Verify create_access_token produces a valid JWT string with an expiry delta."""
     tok = create_access_token({'sub': 'test'}, timedelta(minutes=5))
     assert isinstance(tok, str)
 
 
 @pytest.mark.asyncio
 async def test_check_permission() -> None:
-    # Not verified
+    """Verify check_permission raises for unverified users and disallowed roles."""
     u = User(role=UserRole.USER, is_verified=False)
     with pytest.raises(PermissionDeniedError, match='User is not verified'):
         await check_permission(u, [UserRole.USER], required_verified=True)
 
-    # Not allowed
     with pytest.raises(PermissionDeniedError, match='User does not have permission'):
         await check_permission(u, [UserRole.ADMIN])
 
 
 def test_check_ownership() -> None:
+    """Verify check_ownership validates owner_id presence and enforces ownership."""
     u = User(id=uuid4(), role=UserRole.USER)
 
     class Missing:
@@ -109,5 +115,4 @@ def test_check_ownership() -> None:
     class GoodOwner:
         owner_id = u.id
 
-    # should pass
     check_ownership(u, GoodOwner())

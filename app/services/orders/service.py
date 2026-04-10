@@ -18,6 +18,13 @@ from app.services.user.models import User, UserRole
 
 
 class OrderService:
+    """
+    Service class for order lifecycle operations.
+
+    All methods are static and handle order creation, retrieval,
+    payment confirmation, and cancellation.
+    """
+
     @staticmethod
     async def _get_order(
         session: AsyncSession,
@@ -25,6 +32,22 @@ class OrderService:
         current_user: User,
         for_update: bool = False,
     ) -> Order:
+        """
+        Fetch an order by ID with ownership verification.
+
+        Args:
+            session: Async database session.
+            order_id: ID of the order to fetch.
+            current_user: User requesting access (must own the order).
+            for_update: If True, acquire a row-level lock.
+
+        Returns:
+            The Order instance.
+
+        Raises:
+            NotFoundError: If the order does not exist.
+            PermissionDeniedError: If the user does not own the order.
+        """
         stmt = select(Order).where(Order.id == order_id)
         if for_update:
             stmt = stmt.with_for_update()
@@ -43,6 +66,16 @@ class OrderService:
         old_snapshot: OrderResponse | None,
         action: str,
     ) -> None:
+        """
+        Record an audit log entry for an order state change.
+
+        Args:
+            session: Async database session.
+            user: User who performed the action.
+            order: The modified order instance.
+            old_snapshot: Order state before the change.
+            action: Type of action (e.g., 'create', 'payment', 'cancel').
+        """
         await audit_log_service.log_object_change(
             session=session,
             actor_id=user.id,
@@ -59,6 +92,23 @@ class OrderService:
         order_id: UUID,
         current_user: User,
     ) -> Order:
+        """
+        Retrieve order details with items eagerly loaded.
+
+        Admin and moderator users can view any order; access is logged for audit.
+
+        Args:
+            session: Async database session.
+            order_id: ID of the order to retrieve.
+            current_user: Authenticated user requesting the order.
+
+        Returns:
+            The Order instance with items loaded.
+
+        Raises:
+            NotFoundError: If the order does not exist.
+            PermissionDeniedError: If the user lacks access.
+        """
         order = await OrderService._get_order(session, order_id, current_user)
         if current_user.id != order.user_id and current_user.role in (
             UserRole.ADMIN,
@@ -80,6 +130,24 @@ class OrderService:
         current_user: User,
         order_data: OrderCreate,
     ) -> Order:
+        """
+        Create an order from an existing pending reservation.
+
+        Validates that the reservation belongs to the user, is not expired,
+        and has not already been converted to an order.
+
+        Args:
+            session: Async database session.
+            current_user: Authenticated user creating the order.
+            order_data: Payload containing reservation ID and optional shipping address.
+
+        Returns:
+            The newly created Order with line items.
+
+        Raises:
+            NotFoundError: If the reservation or product does not exist.
+            ConflictError: If the reservation is expired or already used.
+        """
         reservation_result = await session.execute(
             select(Reservation)
             .with_for_update()
@@ -144,6 +212,20 @@ class OrderService:
     async def confirm_order_payment(
         session: AsyncSession, order_id: UUID, current_user: User
     ) -> Order:
+        """
+        Mark a pending order as paid and complete its reservation.
+
+        Args:
+            session: Async database session.
+            order_id: ID of the order to confirm payment for.
+            current_user: Authenticated user (must own the order).
+
+        Returns:
+            The updated order with PAID status.
+
+        Raises:
+            ConflictError: If the order is not in PENDING status.
+        """
         order = await OrderService._get_order(
             session, order_id, current_user, for_update=True
         )
@@ -168,6 +250,20 @@ class OrderService:
     async def cancel_order(
         session: AsyncSession, order_id: UUID, current_user: User
     ) -> Order:
+        """
+        Cancel a pending order and return reserved stock.
+
+        Args:
+            session: Async database session.
+            order_id: ID of the order to cancel.
+            current_user: Authenticated user (must own the order).
+
+        Returns:
+            The updated order with CANCELLED status.
+
+        Raises:
+            ConflictError: If the order is not in PENDING status.
+        """
         order = await OrderService._get_order(
             session, order_id, current_user, for_update=True
         )

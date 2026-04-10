@@ -10,6 +10,7 @@ from app.services.inventory.models import Product
 async def test_reserve_order_flow(
     async_client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """Verify the reserve-then-order flow end to end."""
     test_email = f'{uuid4().hex[:8]}@example.com'
     test_password = 'super_secret_password'
     test_product_id = uuid4()

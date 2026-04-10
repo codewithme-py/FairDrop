@@ -17,6 +17,8 @@ from app.services.orders.models import OrderStatus
 
 
 class AsyncContextManagerMock:
+    """Mock async context manager for S3 client simulation."""
+
     async def __aenter__(self) -> MagicMock:
         return MagicMock()
 
@@ -25,6 +27,8 @@ class AsyncContextManagerMock:
 
 
 class DeepMockSession:
+    """Deep mock session tracking index with predefined responses."""
+
     def __init__(self, responses: Any = None) -> None:
         self.responses = responses or []
         self.idx = 0
@@ -62,7 +66,7 @@ class DeepMockSession:
 
 @pytest.mark.asyncio
 async def test_inventory_tasks_full_loop() -> None:
-    """Verify inventory tasks process multiple reservations and handle stock return."""
+    """Verify inventory tasks process reservations and return stock."""
     res_id = uuid4()
     p_id = uuid4()
     res = Reservation(

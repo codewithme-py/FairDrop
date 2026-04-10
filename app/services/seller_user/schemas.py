@@ -9,6 +9,23 @@ from app.services.orders.models import OrderStatus
 
 
 class SellerProductRead(BaseModel):
+    """
+    Product representation for the owning seller.
+
+    Includes moderation-related fields not shown to buyers.
+
+    Attributes:
+        id: Unique product identifier.
+        name: Product name.
+        description: Product description.
+        price: Unit price.
+        qty_available: Available stock.
+        status: Current lifecycle status.
+        moderation_comment: Optional comment from a moderator.
+        created_at: Creation timestamp.
+        updated_at: Last update timestamp.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     name: str
@@ -22,6 +39,17 @@ class SellerProductRead(BaseModel):
 
 
 class SellerOrderItemRead(BaseModel):
+    """
+    A single line item within an order from the seller's perspective.
+
+    Attributes:
+        id: Unique item identifier.
+        product_id: The sold product ID.
+        product_name: Product name at time of purchase.
+        quantity: Number of units sold.
+        price: Unit price at time of purchase.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     product_id: UUID
@@ -31,6 +59,17 @@ class SellerOrderItemRead(BaseModel):
 
 
 class SellerOrderRead(BaseModel):
+    """
+    Order summary for a seller, showing only their line items.
+
+    Attributes:
+        id: Unique order identifier.
+        status: Current order status.
+        created_at: Order creation timestamp.
+        shipping_address: Delivery address (hidden for pending/failed/cancelled orders).
+        seller_items: Line items belonging to this seller.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     status: OrderStatus
@@ -40,6 +79,18 @@ class SellerOrderRead(BaseModel):
 
 
 class SellerStats(BaseModel):
+    """
+    Statistics summary for a seller's products and orders.
+
+    Attributes:
+        total_products: Total number of products listed by the seller.
+        active_products: Number of products in ACTIVE status.
+        pending_moderation: Number of products awaiting moderation.
+        rejected_products: Number of products rejected during moderation.
+        pending_orders: Number of orders in PENDING status containing seller's products.
+        paid_orders: Number of orders in PAID status containing seller's products.
+    """
+
     total_products: int = 0
     active_products: int = 0
     pending_moderation: int = 0

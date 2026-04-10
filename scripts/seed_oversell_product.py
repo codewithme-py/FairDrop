@@ -1,9 +1,3 @@
-"""
-Script for creating/resetting a test product before OversellTestUser test.
-Usage:
-    uv run python scripts/seed_oversell_product.py
-"""
-
 import asyncio
 import sys
 from decimal import Decimal
@@ -23,6 +17,15 @@ INITIAL_QTY = 50
 
 
 async def seed() -> None:
+    """
+    Create or reset the oversell test product in the database.
+
+    If a product with the predefined ID already exists, its quantity is reset
+    to the initial value. Otherwise, a new product is created.
+
+    Raises:
+        Exception: If database operations fail.
+    """
     engine = create_async_engine(url=str(settings.database_url), echo=False)
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
 

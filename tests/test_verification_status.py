@@ -12,6 +12,10 @@ async def test_get_upgrade_requests(
     db_session: AsyncSession,
     buyer_headers: dict,
 ) -> None:
+    """
+    Verify upgrade request lifecycle: creation, pending status, and rejection.
+    with feedback.
+    """
     resp = await async_client.post(
         '/api/v1/users/me/upgrade-requests',
         json={'target_role': 'SELLER', 'docs_url': {'id_card': 'url1'}},

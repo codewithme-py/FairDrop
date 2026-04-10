@@ -16,6 +16,12 @@ s3_config = Config(s3={'addressing_style': 'path'})
 
 
 async def get_s3_client_gen() -> AsyncIterator[Any]:
+    """
+    Async context manager that yields an S3 client configured for MinIO.
+
+    Yields:
+        An aioboto3 S3 client instance configured to connect to the MinIO endpoint.
+    """
     async with session.client(
         's3',
         endpoint_url=settings.minio_url,
@@ -32,6 +38,12 @@ get_s3_client = asynccontextmanager(get_s3_client_gen)
 
 
 async def init_s3_bucket() -> None:
+    """
+    Ensure the configured MinIO bucket exists, creating it if necessary.
+
+    Checks for the bucket using head_bucket and creates it with
+    create_bucket if a 404 is returned.
+    """
     async with session.client(
         's3',
         endpoint_url=settings.minio_url,

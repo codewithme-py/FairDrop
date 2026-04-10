@@ -7,6 +7,7 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio(loop_scope='session')
 async def test_auth_flow(async_client: AsyncClient) -> None:
+    """Verify the full auth flow: signup, login, refresh, and protected access."""
     test_email = f'{uuid4().hex[:8]}@example.com'
     test_password = 'super_secret_password'
     response = await async_client.post(

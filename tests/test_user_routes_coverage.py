@@ -12,7 +12,7 @@ from app.services.user.service import UserService
 
 @pytest.mark.asyncio
 async def test_user_signup_and_duplicate(async_client: AsyncClient) -> None:
-    """Verify signup success and conflict on duplicate email."""
+    """Verify signup creates a user and returns conflict on duplicate email."""
     email = f'u_{uuid4().hex[:6]}@test.com'
     payload = {'email': email, 'password': 'password123'}
     resp = await async_client.post('/api/v1/users', json=payload)
@@ -23,7 +23,7 @@ async def test_user_signup_and_duplicate(async_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_user_login_flow(async_client: AsyncClient) -> None:
-    """Verify login success and credentials error."""
+    """Verify login returns a token and rejects wrong credentials."""
     email = f'u_{uuid4().hex[:6]}@test.com'
     await async_client.post('/api/v1/users', json={'email': email, 'password': 'p'})
     resp = await async_client.post(
@@ -38,7 +38,7 @@ async def test_user_login_flow(async_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_token_refresh_cycle(async_client: AsyncClient) -> None:
-    """Verify full refresh token cycle and error on fake token."""
+    """Verify refresh token exchange and fake token rejection."""
     email = f'u_{uuid4().hex[:6]}@test.com'
     await async_client.post('/api/v1/users', json={'email': email, 'password': 'p'})
     login_resp = await async_client.post(
@@ -59,7 +59,7 @@ async def test_token_refresh_cycle(async_client: AsyncClient) -> None:
 async def test_b2b_api_keys_full_cycle(
     async_client: AsyncClient, b2b_user_headers: dict
 ) -> None:
-    """Verify B2B API keys management."""
+    """Verify B2B user can create, list, and delete API keys."""
     resp = await async_client.post(
         '/api/v1/users/me/api-keys', json={'name': 'K'}, headers=b2b_user_headers
     )
@@ -80,7 +80,7 @@ async def test_b2b_api_keys_full_cycle(
 async def test_upgrade_request_validation(
     async_client: AsyncClient, buyer_headers: dict
 ) -> None:
-    """Verify upgrade request basic flow and schema validation."""
+    """Verify upgrade request rejects duplicates and invalid roles."""
     payload = {'target_role': UserRole.SELLER_B2B}
     resp = await async_client.post(
         '/api/v1/users/me/upgrade-requests', json=payload, headers=buyer_headers
@@ -100,7 +100,7 @@ async def test_upgrade_request_validation(
 
 @pytest.mark.asyncio
 async def test_service_upgrade_denied_role() -> None:
-    """Directly test UserService for administrative role denial."""
+    """Verify PermissionDeniedError for admin role upgrade request."""
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
@@ -113,7 +113,7 @@ async def test_service_upgrade_denied_role() -> None:
 
 @pytest.mark.asyncio
 async def test_service_upgrade_duplicate_check() -> None:
-    """Directly test UserService for duplicate request check."""
+    """Verify VerificationRequestAlreadyExists for pending request."""
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_session.execute = AsyncMock(return_value=mock_result)
@@ -126,7 +126,7 @@ async def test_service_upgrade_duplicate_check() -> None:
 
 @pytest.mark.asyncio
 async def test_service_auth_none() -> None:
-    """Test authenticate_user returns None for bad credentials."""
+    """Verify UserService.authenticate_user returns None for bad credentials."""
     mock_session = MagicMock()
     mock_result = MagicMock()
     mock_session.execute = AsyncMock(return_value=mock_result)

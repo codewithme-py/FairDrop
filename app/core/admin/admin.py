@@ -19,18 +19,71 @@ from app.services.user.models import (
 
 
 class AdminAccessMixin(ModelView):
+    """
+    Mixin that restricts access to admin model views to ADMIN users only.
+
+    Provides ``is_accessible`` and ``is_visible`` checks that ensure only
+    users with the ``ADMIN`` role can view and interact with the model
+    in the SQLAdmin panel.
+    """
+
     def is_accessible(self, request: Request) -> bool:
+        """
+        Check whether the current user has ADMIN role for access control.
+
+        Args:
+            request: The incoming HTTP request with user information attached
+                to ``request.state``.
+
+        Returns:
+            ``True`` if the authenticated user has the ``ADMIN`` role;
+            ``False`` otherwise.
+        """
         user = getattr(request.state, 'user', None)
         return user is not None and user.role == UserRole.ADMIN
 
     def is_visible(self, request: Request) -> bool:
+        """
+        Check whether the current user has ADMIN role for menu visibility.
+
+        Args:
+            request: The incoming HTTP request with user information attached
+                to ``request.state``.
+
+        Returns:
+            ``True`` if the authenticated user has the ``ADMIN`` role;
+            ``False`` otherwise.
+        """
         user = getattr(request.state, 'user', None)
         return user is not None and user.role == UserRole.ADMIN
 
 
 class AdminPanelFormatter:
+    """
+    Utility class providing formatter methods for displaying data in the admin panel.
+
+    Each static method produces HTML markup (via ``Markup``) suitable for
+    use as a SQLAdmin column formatter, rendering badges, links, and
+    styled status indicators.
+    """
+
     @staticmethod
     def status_formatter(model: Any, name: Any) -> Any:
+        """
+        Render a status field value as a colored Bootstrap badge.
+
+        Maps common status and role values to appropriate Bootstrap badge
+        colors (e.g., ``ACTIVE`` to green, ``CANCELLED`` to red).
+
+        Args:
+            model: The SQLAlchemy model instance being formatted.
+            name: The attribute name to read from the model (e.g., ``status``,
+                ``role``, ``target_role``).
+
+        Returns:
+            A ``Markup`` string containing the HTML badge, or the raw
+            attribute value if the name is not a recognized status field.
+        """
         status_colors = {
             'ACTIVE': 'success',
             'PENDING': 'warning',
@@ -56,6 +109,17 @@ class AdminPanelFormatter:
 
     @staticmethod
     def user_link_formatter(model: Any, name: Any) -> Any:
+        """
+        Render a user ID as a clickable link to the user detail page.
+
+        Args:
+            model: The SQLAlchemy model instance being formatted.
+            name: The attribute name holding the user ID.
+
+        Returns:
+            A ``Markup`` anchor tag linking to ``/admin/user/details/<id>``,
+            or ``'N/A'`` if the user ID is empty.
+        """
         user_id = getattr(model, name)
         if not user_id:
             return 'N/A'
@@ -63,6 +127,17 @@ class AdminPanelFormatter:
 
     @staticmethod
     def product_link_formatter(model: Any, name: Any) -> Any:
+        """
+        Render a product ID as a clickable link to the product detail page.
+
+        Args:
+            model: The SQLAlchemy model instance being formatted.
+            name: The attribute name holding the product ID.
+
+        Returns:
+            A ``Markup`` anchor tag linking to ``/admin/product/details/<id>``,
+            or ``'N/A'`` if the product ID is empty.
+        """
         product_id = getattr(model, name)
         if not product_id:
             return 'N/A'
@@ -70,6 +145,17 @@ class AdminPanelFormatter:
 
     @staticmethod
     def order_link_formatter(model: Any, name: Any) -> Any:
+        """
+        Render an order ID as a clickable link to the order detail page.
+
+        Args:
+            model: The SQLAlchemy model instance being formatted.
+            name: The attribute name holding the order ID.
+
+        Returns:
+            A ``Markup`` anchor tag linking to ``/admin/order/details/<id>``,
+            or ``'N/A'`` if the order ID is empty.
+        """
         order_id = getattr(model, name)
         if not order_id:
             return 'N/A'
@@ -77,6 +163,22 @@ class AdminPanelFormatter:
 
     @staticmethod
     def docs_link_formatter(model: Any, name: Any) -> Any:
+        """
+        Render verification document keys as clickable links for viewing.
+
+        Generates a comma-separated list of anchor tags, each linking to
+        a verification document endpoint keyed by document type.
+
+        Args:
+            model: The SQLAlchemy model instance being formatted (must have
+                an ``id`` attribute).
+            name: The attribute name holding the document data as a dict
+                mapping document types to URLs or values.
+
+        Returns:
+            A ``Markup`` string of comma-separated links, or ``'No docs'``
+            if the document data is empty.
+        """
         docs = getattr(model, name)
         if not docs:
             return 'No docs'
@@ -91,6 +193,14 @@ class AdminPanelFormatter:
 
 
 class VerificationRequestAdmin(AdminAccessMixin, model=VerificationRequest):
+    """
+    Admin panel view for managing user verification requests.
+
+    Allows admins with ``ADMIN`` role to view, approve, or reject user
+    verification requests. Approving a request automatically upgrades
+    the user's role to the requested target role.
+    """
+
     column_list = [
         VerificationRequest.id,
         VerificationRequest.user_id,
@@ -121,6 +231,20 @@ class VerificationRequestAdmin(AdminAccessMixin, model=VerificationRequest):
     async def on_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
     ) -> None:
+        """
+        Handle post-save logic for verification request updates.
+
+        When a verification request status is changed to ``APPROVED``, this
+        hook automatically updates the associated user's role to the
+        requested target role and marks the user as verified.
+
+        Args:
+            data: Dictionary of form field values being saved.
+            model: The ``VerificationRequest`` model instance being updated.
+            is_created: ``True`` if this is a new record creation; ``False``
+                for updates.
+            request: The incoming HTTP request.
+        """
         if not is_created and data.get('status') == VerificationStatus.APPROVED:
             async with async_session_factory() as session:
                 result = await session.execute(
@@ -133,6 +257,13 @@ class VerificationRequestAdmin(AdminAccessMixin, model=VerificationRequest):
 
 
 class UserAdmin(ModelView, model=User):
+    """
+    Admin panel view for managing user accounts.
+
+    Supports both ``ADMIN`` and ``MODERATOR`` roles. Moderators can view
+    users but cannot create, edit, or delete records.
+    """
+
     column_list = [User.id, User.email, User.role, User.is_active]
     column_searchable_list = [User.id, User.email]
     can_delete = False
@@ -142,6 +273,20 @@ class UserAdmin(ModelView, model=User):
     column_default_sort = [('created_at', True)]
 
     def is_accessible(self, request: Request) -> bool:
+        """
+        Check whether the requesting user can access this admin view.
+
+        Allows both ``ADMIN`` and ``MODERATOR`` roles. Moderators are
+        restricted from create, edit, and delete operations.
+
+        Args:
+            request: The incoming HTTP request with user information and
+                route details.
+
+        Returns:
+            ``True`` if the user has an allowed role and the requested
+                operation is permitted; ``False`` otherwise.
+        """
         user = getattr(request.state, 'user', None)
         if not user:
             return False
@@ -163,6 +308,14 @@ class UserAdmin(ModelView, model=User):
 
 
 class ProductAdmin(ModelView, model=Product):
+    """
+    Admin panel view for managing product listings.
+
+    Allows admins to view product details, update moderation status,
+    assign moderators, and add moderation comments. Creation and
+    deletion are disabled.
+    """
+
     column_list = [
         Product.id,
         Product.name,
@@ -199,6 +352,13 @@ class ProductAdmin(ModelView, model=Product):
 
 
 class OrderAdmin(ModelView, model=Order):
+    """
+    Admin panel view for viewing customer orders.
+
+    Provides read-only access to order records with formatted status
+    badges and user links. Creation, editing, and deletion are disabled.
+    """
+
     column_list = [
         Order.id,
         Order.user_id,
@@ -220,6 +380,13 @@ class OrderAdmin(ModelView, model=Order):
 
 
 class ReservationAdmin(ModelView, model=Reservation):
+    """
+    Admin panel view for viewing product reservations.
+
+    Displays reservation details including product, user, quantity, and
+    expiration time. All mutations (create, edit, delete) are disabled.
+    """
+
     column_list = [
         Reservation.id,
         Reservation.product_id,
@@ -246,6 +413,13 @@ class ReservationAdmin(ModelView, model=Reservation):
 
 
 class AuditLogAdmin(AdminAccessMixin, model=AuditLog):
+    """
+    Admin panel view for viewing audit log entries.
+
+    Provides read-only access to the audit trail, showing all recorded
+    actions, target objects, and actors. Restricted to ``ADMIN`` role.
+    """
+
     column_list = [
         AuditLog.id,
         AuditLog.target_type,
@@ -269,6 +443,13 @@ class AuditLogAdmin(AdminAccessMixin, model=AuditLog):
 
 
 class APIKeyB2BPartnerAdmin(AdminAccessMixin, model=APIKeyB2BPartner):
+    """
+    Admin panel view for managing B2B partner API keys.
+
+    Displays API key records with user associations, key names, and
+    prefixes. Restricted to ``ADMIN`` role. Deletion is disabled.
+    """
+
     column_list = [
         APIKeyB2BPartner.id,
         APIKeyB2BPartner.user_id,
@@ -289,6 +470,16 @@ class APIKeyB2BPartnerAdmin(AdminAccessMixin, model=APIKeyB2BPartner):
 
 
 def register_admin_views(admin: Any) -> None:
+    """
+    Register all admin model views with the SQLAdmin instance.
+
+    Adds each admin view class (users, products, orders, reservations,
+    audit logs, API keys, and verification requests) to the provided
+    admin object.
+
+    Args:
+        admin: The SQLAdmin ``Admin`` instance to register views with.
+    """
     admin.add_view(UserAdmin)
     admin.add_view(ProductAdmin)
     admin.add_view(OrderAdmin)

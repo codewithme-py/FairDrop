@@ -9,6 +9,12 @@ from app.core.config import settings
 
 
 def setup_logging() -> None:
+    """
+    Configure structlog for application-wide structured logging.
+
+    In debug mode, outputs human-readable console logs. In production mode,
+    outputs JSON-formatted logs using ``orjson`` for efficient parsing.
+    """
     processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,

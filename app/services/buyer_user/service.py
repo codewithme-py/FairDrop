@@ -14,6 +14,19 @@ async def get_my_orders(
     user_id: UUID,
     status: OrderStatus | None = None,
 ) -> Sequence[Order]:
+    """
+    Fetch all orders for a buyer, optionally filtered by status.
+
+    Args:
+        session: Async database session.
+        user_id: ID of the buyer user.
+        status: Optional filter; only orders matching this status are
+            returned.
+
+    Returns:
+        Sequence of Order objects with items eagerly loaded, ordered by
+        creation date descending.
+    """
     stmt = (
         select(Order)
         .where(Order.user_id == user_id)
@@ -30,6 +43,16 @@ async def get_my_stats(
     session: AsyncSession,
     user_id: UUID,
 ) -> BuyerStats:
+    """
+    Aggregate order statistics for a buyer.
+
+    Args:
+        session: Async database session.
+        user_id: ID of the buyer user.
+
+    Returns:
+        BuyerStats with counts broken down by order status.
+    """
     stmt = (
         select(Order.status, func.count(Order.id))
         .where(Order.user_id == user_id)

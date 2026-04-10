@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
@@ -26,6 +27,7 @@ from app.services.user.service import UserService
 
 @pytest.fixture
 async def sample_user(db_session: Any) -> Any:
+    """Create a sample user for user service coverage tests."""
     user = User(
         id=uuid4(),
         email=f'usr_{uuid4().hex}@mail.com',
@@ -40,6 +42,9 @@ async def sample_user(db_session: Any) -> Any:
 
 @pytest.mark.asyncio
 async def test_create_user_success(db_session: Any) -> None:
+    """
+    Verify UserService.create_user creates a new user and persists it to the database.
+    """
     email = f'new_{uuid4().hex}@mail.com'
     user_create = UserCreate(email=email, password='secure!')
     user = await UserService.create_user(db_session, user_create)
@@ -50,6 +55,9 @@ async def test_create_user_success(db_session: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_create_user_already_exists(db_session: Any, sample_user: Any) -> None:
+    """
+    Verify UserService.create_user raises UserAlreadyExists for a duplicate email.
+    """
     user_create = UserCreate(email=sample_user.email, password='secure!')
     with pytest.raises(UserAlreadyExists):
         await UserService.create_user(db_session, user_create)
@@ -57,6 +65,7 @@ async def test_create_user_already_exists(db_session: Any, sample_user: Any) -> 
 
 @pytest.mark.asyncio
 async def test_authenticate_user_success(db_session: Any, sample_user: Any) -> None:
+    """Verify authenticate_user returns the user for correct credentials."""
     user = await UserService.authenticate_user(
         db_session, sample_user.email, 'password123'
     )
@@ -68,12 +77,14 @@ async def test_authenticate_user_success(db_session: Any, sample_user: Any) -> N
 async def test_authenticate_user_wrong_password(
     db_session: Any, sample_user: Any
 ) -> None:
+    """Verify authenticate_user returns None for an incorrect password."""
     user = await UserService.authenticate_user(db_session, sample_user.email, 'wrong')
     assert user is None
 
 
 @pytest.mark.asyncio
 async def test_authenticate_user_not_found(db_session: Any) -> None:
+    """Verify authenticate_user returns None for a nonexistent email."""
     user = await UserService.authenticate_user(db_session, 'nobody@mail.com', 'wrong')
     assert user is None
 
@@ -82,6 +93,7 @@ async def test_authenticate_user_not_found(db_session: Any) -> None:
 async def test_create_and_refresh_access_token(
     db_session: Any, sample_user: Any
 ) -> None:
+    """Verify creating a refresh token and exchanging it for a new access token."""
     token = await UserService.create_refresh_token(db_session, sample_user.id)
     assert token is not None
     user = await UserService.refresh_access_token(db_session, token)
@@ -94,13 +106,14 @@ async def test_create_and_refresh_access_token(
 
 @pytest.mark.asyncio
 async def test_refresh_token_not_found(db_session: Any) -> None:
+    """Verify refresh_access_token raises CredentialsError for an invalid token."""
     with pytest.raises(CredentialsError):
         await UserService.refresh_access_token(db_session, 'invalid_token')
 
 
 @pytest.mark.asyncio
 async def test_refresh_token_expired(db_session: Any, sample_user: Any) -> None:
-    import secrets
+    """Verify refresh_access_token raises CredentialsError for an expired token."""
 
     token = secrets.token_urlsafe(32)
     expired_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
@@ -118,6 +131,7 @@ async def test_refresh_token_expired(db_session: Any, sample_user: Any) -> None:
 async def test_delete_api_key_b2b_partner_success(
     db_session: Any, sample_user: Any
 ) -> None:
+    """Verify delete_api_key_b2b_partner removes the key from the database."""
     api_key, _ = await UserService.create_api_key_b2b_partner(
         db_session, sample_user.id, 'delete_me'
     )
@@ -133,6 +147,7 @@ async def test_delete_api_key_b2b_partner_success(
 async def test_delete_api_key_b2b_partner_not_found(
     db_session: Any, sample_user: Any
 ) -> None:
+    """Verify delete_api_key_b2b_partner raises NotFoundError for a nonexistent key."""
     with pytest.raises(NotFoundError):
         await UserService.delete_api_key_b2b_partner(
             db_session, sample_user.id, uuid4()
@@ -143,6 +158,7 @@ async def test_delete_api_key_b2b_partner_not_found(
 async def test_create_verification_request_success(
     db_session: Any, sample_user: Any
 ) -> None:
+    """Verify create_verification_request creates a pending verification request."""
     req = await UserService.create_verification_request(
         db_session, sample_user.id, UserRole.SELLER, {'doc': 'url'}
     )
@@ -154,6 +170,10 @@ async def test_create_verification_request_success(
 async def test_create_verification_request_already_exists(
     db_session: Any, sample_user: Any
 ) -> None:
+    """
+    Verify create_verification_request raises.
+    VerificationRequestAlreadyExists on duplicate.
+    """
     await UserService.create_verification_request(
         db_session, sample_user.id, UserRole.SELLER
     )
@@ -167,6 +187,10 @@ async def test_create_verification_request_already_exists(
 async def test_create_verification_request_admin_role_denied(
     db_session: Any, sample_user: Any
 ) -> None:
+    """
+    Verify create_verification_request raises.
+    PermissionDeniedError for administrative roles.
+    """
     with pytest.raises(PermissionDeniedError) as exc:
         await UserService.create_verification_request(
             db_session, sample_user.id, UserRole.ADMIN
@@ -183,11 +207,12 @@ async def test_create_verification_request_admin_role_denied(
 async def test_authenticate_api_key_b2b_partner_success(
     db_session: Any, sample_user: Any
 ) -> None:
+    """
+    Verify authenticate_api_key_b2b_partner returns the key and updates last_used_at.
+    """
     _, raw_key = await UserService.create_api_key_b2b_partner(
         db_session, sample_user.id, 'auth_test_key'
     )
-
-    # Authenticate
     api_key_obj = await UserService.authenticate_api_key_b2b_partner(
         db_session, raw_key
     )
@@ -200,11 +225,13 @@ async def test_authenticate_api_key_b2b_partner_success(
 async def test_authenticate_api_key_b2b_partner_invalid_key(
     db_session: Any, sample_user: Any
 ) -> None:
+    """
+    Verify authenticate_api_key_b2b_partner returns.
+    None for a key with a mismatching suffix.
+    """
     _, raw_key = await UserService.create_api_key_b2b_partner(
         db_session, sample_user.id, 'auth_test_key_2'
     )
-
-    # Send a key that shares prefix but has different rest
     invalid_key = raw_key[:12] + 'wrong_suffix'
     api_key_obj = await UserService.authenticate_api_key_b2b_partner(
         db_session, invalid_key
@@ -214,6 +241,9 @@ async def test_authenticate_api_key_b2b_partner_invalid_key(
 
 @pytest.mark.asyncio
 async def test_authenticate_api_key_b2b_partner_not_found(db_session: Any) -> None:
+    """
+    Verify authenticate_api_key_b2b_partner returns None for a completely unknown key.
+    """
     nonexistent_key = 'some_random_key_prefix' + 'and_suffix'
     api_key_obj = await UserService.authenticate_api_key_b2b_partner(
         db_session, nonexistent_key

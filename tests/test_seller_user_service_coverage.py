@@ -16,6 +16,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def seller_user(db_session: Any) -> Any:
+    """Create a seller user for seller service coverage tests."""
     user = User(
         id=uuid4(),
         email=f'seller_{uuid4().hex[:4]}@mail.com',
@@ -30,6 +31,7 @@ async def seller_user(db_session: Any) -> Any:
 
 @pytest.fixture
 async def buyer_user(db_session: Any) -> Any:
+    """Create a buyer user for seller service coverage tests."""
     user = User(
         id=uuid4(),
         email=f'buyer_{uuid4().hex[:4]}@mail.com',
@@ -44,6 +46,7 @@ async def buyer_user(db_session: Any) -> Any:
 
 @pytest.fixture
 async def seller_product(db_session: Any, seller_user: Any) -> Any:
+    """Create an active product owned by the seller user."""
     product = Product(
         id=uuid4(),
         name='Seller Product',
@@ -62,18 +65,14 @@ async def seller_product(db_session: Any, seller_user: Any) -> Any:
 async def test_get_my_products_basic(
     db_session: Any, seller_user: Any, seller_product: Any
 ) -> None:
-    # Success: all products
+    """Verify get_my_products returns all, active-filtered, and empty results."""
     prods = await get_my_products(db_session, seller_user.id)
     assert len(prods) == 1
     assert prods[0].id == seller_product.id
-
-    # Success: filter by ACTIVE
     prods_active = await get_my_products(
         db_session, seller_user.id, status=ProductStatus.ACTIVE
     )
     assert len(prods_active) == 1
-
-    # Success: filter by DRAFT (empty)
     prods_draft = await get_my_products(
         db_session, seller_user.id, status=ProductStatus.DRAFT
     )
@@ -82,6 +81,7 @@ async def test_get_my_products_basic(
 
 @pytest.mark.asyncio
 async def test_get_my_orders_empty(db_session: Any, seller_user: Any) -> None:
+    """Verify get_my_orders returns an empty list when the seller has no orders."""
     orders = await get_my_orders(db_session, seller_user.id)
     assert orders == []
 
@@ -90,7 +90,7 @@ async def test_get_my_orders_empty(db_session: Any, seller_user: Any) -> None:
 async def test_get_my_orders_full_cycle(
     db_session: Any, seller_user: Any, buyer_user: Any, seller_product: Any
 ) -> None:
-    # Create order 1: PENDING
+    """Verify get_my_orders returns orders with address masking for pending."""
     order_pending = Order(
         id=uuid4(),
         user_id=buyer_user.id,
@@ -108,8 +108,6 @@ async def test_get_my_orders_full_cycle(
         price=seller_product.price,
     )
     db_session.add(item_pending)
-
-    # Create order 2: PAID
     order_paid = Order(
         id=uuid4(),
         user_id=buyer_user.id,
@@ -127,22 +125,13 @@ async def test_get_my_orders_full_cycle(
         price=seller_product.price,
     )
     db_session.add(item_paid)
-
     await db_session.commit()
-
-    # Test get_my_orders ALL
     all_orders = await get_my_orders(db_session, seller_user.id)
     assert len(all_orders) == 2
-
-    # Find orders in result
     paid_res = next(o for o in all_orders if o.status == OrderStatus.PAID)
     pending_res = next(o for o in all_orders if o.status == OrderStatus.PENDING)
-
-    # Check address masking
     assert paid_res.shipping_address == '456 Public Rd'
     assert pending_res.shipping_address is None
-
-    # Test filter by PAID
     paid_only = await get_my_orders(db_session, seller_user.id, status=OrderStatus.PAID)
     assert len(paid_only) == 1
     assert paid_only[0].id == order_paid.id
@@ -152,7 +141,7 @@ async def test_get_my_orders_full_cycle(
 async def test_get_my_stats_comprehensive(
     db_session: Any, seller_user: Any, buyer_user: Any, seller_product: Any
 ) -> None:
-    # Add a draft product
+    """Verify get_my_stats counts total/active products and paid/pending orders."""
     draft_prod = Product(
         id=uuid4(),
         name='Draft Product',
@@ -162,8 +151,6 @@ async def test_get_my_stats_comprehensive(
         status=ProductStatus.DRAFT,
     )
     db_session.add(draft_prod)
-
-    # Add a paid order
     order = Order(
         id=uuid4(),
         user_id=buyer_user.id,
@@ -181,9 +168,7 @@ async def test_get_my_stats_comprehensive(
             price=seller_product.price,
         )
     )
-
     await db_session.commit()
-
     stats = await get_my_stats(db_session, seller_user.id)
     assert stats.total_products == 2
     assert stats.active_products == 1

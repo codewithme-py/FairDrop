@@ -32,6 +32,16 @@ async def fetch_my_stats(
     session: AsyncSession = Depends(get_session),
     current_user: User = SELLER_DEPENDENCY,
 ) -> SellerStats:
+    """
+    Retrieve sales and product statistics for the authenticated seller.
+
+    Args:
+        session: Async database session.
+        current_user: Authenticated seller user.
+
+    Returns:
+        SellerStats with product and order counts broken down by status.
+    """
     return await get_my_stats(session, current_user.id)
 
 
@@ -41,6 +51,17 @@ async def fetch_my_products(
     session: AsyncSession = Depends(get_session),
     current_user: User = SELLER_DEPENDENCY,
 ) -> list[SellerProductRead]:
+    """
+    Retrieve the seller's products, optionally filtered by status.
+
+    Args:
+        status: Optional filter by product lifecycle status.
+        session: Async database session.
+        current_user: Authenticated seller user.
+
+    Returns:
+        List of the seller's products ordered by creation date descending.
+    """
     products = await get_my_products(session, current_user.id, status)
     return [SellerProductRead.model_validate(p) for p in products]
 
@@ -51,4 +72,15 @@ async def fetch_my_orders(
     session: AsyncSession = Depends(get_session),
     current_user: User = SELLER_DEPENDENCY,
 ) -> list[SellerOrderRead]:
+    """
+    Retrieve orders containing the seller's products, optionally filtered by status.
+
+    Args:
+        status: Optional filter by order status.
+        session: Async database session.
+        current_user: Authenticated seller user.
+
+    Returns:
+        List of orders with only the seller's line items included.
+    """
     return await get_my_orders(session, current_user.id, status)

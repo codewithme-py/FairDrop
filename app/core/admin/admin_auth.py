@@ -11,7 +11,30 @@ from app.services.user.service import UserService
 
 
 class AdminAuth(AuthenticationBackend):
+    """
+    Authentication backend for the SQLAdmin panel using session-based login.
+
+    Handles login, logout, and authentication for admin panel users. Only
+    users with the ADMIN or MODERATOR role are granted access.
+    """
+
     async def login(self, request: Request) -> bool:
+        """
+        Authenticate an admin user via email and password from a form.
+
+        Extracts the username (email) and password fields from the
+        submitted form, validates the credentials, and checks that the user
+        has an admin or moderator role. On success, stores the user ID in
+        the session.
+
+        Args:
+            request: The incoming Starlette request containing form data with
+                username and password fields.
+
+        Returns:
+            True if authentication succeeds and the user has the
+            required role; False otherwise.
+        """
         user_data = await request.form()
         email = user_data.get('username')
         password = user_data.get('password')
@@ -32,10 +55,34 @@ class AdminAuth(AuthenticationBackend):
                 return False
 
     async def logout(self, request: Request) -> bool:
+        """
+        Log out the current admin user by clearing the session.
+
+        Args:
+            request: The incoming Starlette request with an active session.
+
+        Returns:
+            Always returns True after clearing the session.
+        """
         request.session.clear()
         return True
 
     async def authenticate(self, request: Request) -> bool:
+        """
+        Verify that the current session holds a valid admin or moderator user.
+
+        Looks up the user ID stored in the session under the token key
+        and checks that the corresponding user exists and has either the
+        ADMIN or MODERATOR role. The authenticated user is attached
+        to request.state for downstream use.
+
+        Args:
+            request: The incoming Starlette request with a session.
+
+        Returns:
+            True if a valid admin/moderator user is authenticated;
+            False if the session is empty or the user is invalid.
+        """
         token = request.session.get('token')
         if not token:
             return False

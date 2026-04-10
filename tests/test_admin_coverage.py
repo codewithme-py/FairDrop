@@ -18,6 +18,7 @@ from app.services.user.models import (
 async def test_admin_login_and_logout(
     async_client: AsyncClient, db_session: Any
 ) -> None:
+    """Verify admin login renders the panel and logout returns to login page."""
     password = 'admin_password'
     admin_user = User(
         email=f'admin_{uuid4().hex[:4]}@test.com',
@@ -43,6 +44,7 @@ async def test_admin_login_and_logout(
 async def test_verification_approval_on_model_change(
     async_client: AsyncClient, db_session: Any
 ) -> None:
+    """Verify admin can approve a verification request and update user role."""
     admin_pass = 'admin_pass'
     admin = User(
         email=f'adm_{uuid4().hex[:4]}@test.com',
@@ -87,6 +89,7 @@ async def test_verification_approval_on_model_change(
 async def test_moderator_rbac_enforcement(
     async_client: AsyncClient, db_session: Any
 ) -> None:
+    """Verify moderators are denied access to admin user edit endpoints."""
     mod_pass = 'mod_pass'
     moderator = User(
         email=f'mod_{uuid4().hex[:4]}@test.com',
@@ -116,6 +119,7 @@ async def test_moderator_rbac_enforcement(
 async def test_admin_formatters_rendering(
     async_client: AsyncClient, db_session: Any
 ) -> None:
+    """Verify admin panel formatter pages render correctly."""
     admin_pass = 'admin_pass'
     admin = User(
         email=f'adm_f_{uuid4().hex[:4]}@test.com',
@@ -130,7 +134,6 @@ async def test_admin_formatters_rendering(
         data={'username': admin.email, 'password': admin_pass},
         follow_redirects=True,
     )
-
     resp = await async_client.get('/admin/verification-request/list')
     assert resp.status_code == HTTPStatus.OK
     assert 'Verification' in resp.text

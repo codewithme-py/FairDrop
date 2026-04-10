@@ -19,6 +19,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add owner_id column to products.
+
+    Includes foreign key to users, backfilling existing rows.
+    """
     op.add_column('products', sa.Column('owner_id', sa.UUID(), nullable=True))
     op.create_foreign_key(
         'fk_products_owner', 'products', 'users', ['owner_id'], ['id']
@@ -35,5 +39,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove owner_id column and its foreign key constraint from the products table."""
     op.drop_constraint('fk_products_owner', 'products', type_='foreignkey')
     op.drop_column('products', 'owner_id')

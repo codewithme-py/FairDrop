@@ -14,6 +14,12 @@ class BaseUser(HttpUser):
     abstract = True
 
     def on_start(self) -> None:
+        """
+        Register a new user and obtain auth tokens when a Locust instance starts.
+
+        Creates a unique email address, registers the user via the API,
+        then logs in to obtain access and refresh tokens.
+        """
         self.access_token: str | None = None
         self.refresh_token: str | None = None
         email = f'locust_{uuid4()}@mail.com'
@@ -46,6 +52,13 @@ class BaseUser(HttpUser):
 
     @property
     def auth_headers(self) -> dict[str, str]:
+        """
+        Return HTTP headers required for authenticated requests.
+
+        Returns:
+            dict: A dictionary containing the Authorization Bearer token and
+                a unique X-Idempotency-Key header.
+        """
         return {
             'Authorization': f'Bearer {self.access_token}',
             'X-Idempotency-Key': str(uuid4()),
@@ -57,6 +70,17 @@ class BaseUser(HttpUser):
         filename: str,
         content_type: str,
     ) -> str | None:
+        """
+        Request a presigned upload URL for a product media file.
+
+        Args:
+            product_id: The UUID of the product to upload media for.
+            filename: The name of the file to upload.
+            content_type: The MIME type of the file.
+
+        Returns:
+            The presigned URL string if the request succeeds, or None on failure.
+        """
         with self.client.post(
             f'/api/v1/media/products/{product_id}/upload_url',
             headers=self.auth_headers,
@@ -79,6 +103,17 @@ class BaseUser(HttpUser):
                 return None
 
     def do_reserve(self, product_id: str, quantity: int = 1) -> str | None:
+        """
+        Reserve inventory for a product.
+
+        Args:
+            product_id: The UUID of the product to reserve.
+            quantity: The number of units to reserve. Defaults to 1.
+
+        Returns:
+            The reservation ID string if the reservation is successful, or None
+            on failure or expected conflict responses.
+        """
         with self.client.post(
             '/api/v1/inventory/reserve',
             headers=self.auth_headers,
@@ -105,6 +140,15 @@ class BaseUser(HttpUser):
                 return None
 
     def do_create_order(self, reservation_id: str) -> bool:
+        """
+        Create an order from an existing reservation.
+
+        Args:
+            reservation_id: The ID of the reservation to convert into an order.
+
+        Returns:
+            True if the order was created successfully, False otherwise.
+        """
         with self.client.post(
             '/api/v1/orders/',
             headers=self.auth_headers,
@@ -123,6 +167,12 @@ class BaseUser(HttpUser):
                 return False
 
     def do_view_profile(self) -> bool:
+        """
+        Fetch the authenticated user's profile.
+
+        Returns:
+            True if the request succeeded, False otherwise.
+        """
         with self.client.get(
             '/api/v1/users/me',
             headers=self.auth_headers,
@@ -140,6 +190,15 @@ class BaseUser(HttpUser):
                 return False
 
     def do_refresh_token(self) -> bool:
+        """
+        Refresh the access token using the stored refresh token.
+
+        Updates the instance's access_token and refresh_token attributes on success.
+
+        Returns:
+            True if a new token pair was obtained, False if no refresh token is
+                available or the refresh returned an expected non-200 response.
+        """
         if not self.refresh_token:
             return False
         with self.client.post(

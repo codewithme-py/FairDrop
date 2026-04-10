@@ -14,11 +14,13 @@ from app.shared.rate_limit_utils import limit_login_attempts, limit_signup_attem
 
 @pytest.fixture
 def mock_script() -> Any:
+    """Create a mock Redis Lua script for rate limiting tests."""
     return AsyncMock()
 
 
 @pytest.fixture
 def mock_request(mock_script: Any) -> Any:
+    """Create a mock FastAPI request with rate limit script attached."""
     request = Mock(spec=Request)
     request.app = Mock()
     request.app.state = Mock()
@@ -30,10 +32,10 @@ def mock_request(mock_script: Any) -> Any:
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_success(mock_script: Any) -> None:
+    """Verify check_rate_limit returns True when within limits."""
     mock_script.return_value = 1
     res = await check_rate_limit(mock_script, keys=['key'], limits=[10])
     assert res is True
-    # Verify that a dummy key was added since length was 1
     mock_script.assert_called_once()
     kwargs = mock_script.call_args.kwargs
     assert len(kwargs['keys']) == 2
@@ -42,6 +44,7 @@ async def test_check_rate_limit_success(mock_script: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_user_exceeded(mock_script: Any) -> None:
+    """Verify check_rate_limit raises 429 when the user rate limit is exceeded."""
     mock_script.return_value = 0
     with pytest.raises(HTTPException) as exc:
         await check_rate_limit(mock_script, keys=['k1', 'k2'], limits=[10, 100])
@@ -51,6 +54,7 @@ async def test_check_rate_limit_user_exceeded(mock_script: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_global_exceeded(mock_script: Any) -> None:
+    """Verify check_rate_limit raises 429 when the global rate limit is exceeded."""
     mock_script.return_value = -1
     with pytest.raises(HTTPException) as exc:
         await check_rate_limit(mock_script, keys=['k1', 'k2'], limits=[10, 100])
@@ -60,6 +64,7 @@ async def test_check_rate_limit_global_exceeded(mock_script: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_limit_login_attempts(mock_request: Any, mock_script: Any) -> None:
+    """Verify limit_login_attempts constructs correct Redis key."""
     mock_script.return_value = 1
     await limit_login_attempts(mock_request, 'test@mail.com')
     mock_script.assert_called_once()
@@ -69,6 +74,7 @@ async def test_limit_login_attempts(mock_request: Any, mock_script: Any) -> None
 
 @pytest.mark.asyncio
 async def test_limit_signup_attempts(mock_request: Any, mock_script: Any) -> None:
+    """Verify limit_signup_attempts constructs the correct Redis key using client IP."""
     mock_script.return_value = 1
     await limit_signup_attempts(mock_request)
     mock_script.assert_called_once()
@@ -80,6 +86,7 @@ async def test_limit_signup_attempts(mock_request: Any, mock_script: Any) -> Non
 async def test_limit_signup_attempts_no_client(
     mock_request: Any, mock_script: Any
 ) -> None:
+    """Verify limit_signup_attempts uses 'unknown' when client IP is not available."""
     mock_request.client = None
     mock_script.return_value = 1
     await limit_signup_attempts(mock_request)

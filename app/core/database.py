@@ -21,10 +21,16 @@ async_session_factory = async_sessionmaker(
 
 
 class Base(DeclarativeBase):
-    pass
+    """Base class for all SQLAlchemy ORM models."""
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide an async database session as a FastAPI dependency.
+
+    Yields:
+        An async SQLAlchemy session that is automatically closed after use.
+    """
     async with async_session_factory() as session:
         yield session
 

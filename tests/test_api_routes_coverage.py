@@ -12,6 +12,7 @@ async def test_full_platform_flow(
     seller_headers: dict,
     buyer_headers: dict,
 ) -> None:
+    """Verify the full platform flow: create, approve, reserve, and order."""
     p_payload = {'name': f'P_{uuid4().hex[:4]}', 'price': 10.0, 'qty_available': 10}
     resp = await async_client.post(
         '/api/v1/inventory/', json=p_payload, headers=seller_headers
@@ -42,6 +43,7 @@ async def test_full_platform_flow(
 async def test_inventory_seller_limits_enforced(
     async_client: AsyncClient, unverified_seller_headers: dict
 ) -> None:
+    """Verify unverified sellers are limited to a maximum number of products."""
     payload = {'name': 'L', 'price': 1.0, 'qty_available': 1}
     for _ in range(3):
         resp = await async_client.post(
@@ -59,6 +61,7 @@ async def test_inventory_seller_limits_enforced(
 async def test_rbac_and_errors(
     async_client: AsyncClient, admin_headers: dict, seller_headers: dict
 ) -> None:
+    """Verify inventory RBAC and conflict errors for approve operations."""
     resp = await async_client.get(f'/api/v1/inventory/{uuid4()}')
     assert resp.status_code == HTTPStatus.NOT_FOUND
     p = await async_client.post(

@@ -17,6 +17,7 @@ from app.services.user.models import User
 async def test_arq_concurrent_expiry_no_double_return(
     db_engine: AsyncEngine, db_session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
+    """Verify concurrent ARQ expiry workers do not double-return inventory stock."""
     async with db_session_factory() as clean_up_session:
         await clean_up_session.execute(
             delete(Reservation).where(Reservation.status == OrderStatus.PENDING)

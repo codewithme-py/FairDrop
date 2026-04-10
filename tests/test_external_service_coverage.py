@@ -15,6 +15,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def sample_user(db_session: Any) -> Any:
+    """Create a sample user for external service tests."""
     user = User(
         id=uuid4(),
         email=f'external_{uuid4().hex[:4]}@mail.com',
@@ -29,6 +30,7 @@ async def sample_user(db_session: Any) -> Any:
 
 @pytest.fixture
 async def active_product(db_session: Any, sample_user: Any) -> Any:
+    """Create an active product associated with the sample user."""
     product = Product(
         id=uuid4(),
         name='External Product',
@@ -47,6 +49,7 @@ async def active_product(db_session: Any, sample_user: Any) -> Any:
 async def test_get_external_catalog_success(
     db_session: Any, active_product: Any
 ) -> None:
+    """Verify get_external_catalog includes the active test product."""
     catalog = await get_external_catalog(db_session)
     assert len(catalog) >= 1
     assert any(p.id == active_product.id for p in catalog)
@@ -56,7 +59,7 @@ async def test_get_external_catalog_success(
 async def test_get_external_order_status_cycle(
     db_session: Any, sample_user: Any
 ) -> None:
-    # Create order
+    """Verify get_external_order_status finds owned orders, rejects others."""
     order = Order(
         id=uuid4(),
         user_id=sample_user.id,
@@ -65,16 +68,10 @@ async def test_get_external_order_status_cycle(
     )
     db_session.add(order)
     await db_session.commit()
-
-    # Success: order exists and belongs to user
     res = await get_external_order_status(db_session, sample_user.id, order.id)
     assert res is not None
     assert res.id == order.id
-
-    # Failure: order doesn't exist
     res_none = await get_external_order_status(db_session, sample_user.id, uuid4())
     assert res_none is None
-
-    # Failure: order belongs to another user
     res_wrong_user = await get_external_order_status(db_session, uuid4(), order.id)
     assert res_wrong_user is None

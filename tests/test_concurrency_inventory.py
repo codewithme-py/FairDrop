@@ -17,6 +17,7 @@ from app.services.user.models import User
 async def test_concurrent_reservations_service_level(
     db_session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
+    """Verify concurrent reservations correctly deplete inventory."""
     async with db_session_factory() as setup_session:
         user = User(id=uuid4(), email=f'test_{uuid4()}@mail.com', password_hash='foo')
         setup_session.add(user)

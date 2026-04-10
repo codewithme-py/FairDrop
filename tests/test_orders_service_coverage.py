@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -14,11 +15,13 @@ from app.services.user.models import UserRole
 
 @pytest.fixture
 async def sample_buyer(create_test_user: Any) -> Any:
+    """Create a sample buyer user for order service tests."""
     return await create_test_user(UserRole.USER)
 
 
 @pytest.fixture
 async def sample_product(sample_buyer: Any, create_test_product: Any) -> Any:
+    """Create an active product for order service tests."""
     return await create_test_product(
         owner_id=sample_buyer.id,
         name='Test',
@@ -30,6 +33,7 @@ async def sample_product(sample_buyer: Any, create_test_product: Any) -> Any:
 
 @pytest.mark.asyncio
 async def test_get_order_not_found(db_session: Any, sample_buyer: Any) -> None:
+    """Verify OrderService._get_order raises NotFoundError for a nonexistent order."""
     with pytest.raises(NotFoundError):
         await OrderService._get_order(db_session, uuid4(), sample_buyer)
 
@@ -38,6 +42,7 @@ async def test_get_order_not_found(db_session: Any, sample_buyer: Any) -> None:
 async def test_create_order_expired_reservation(
     db_session: Any, sample_buyer: Any, sample_product: Any
 ) -> None:
+    """Verify creating an order from an expired reservation raises ConflictError."""
     res = Reservation(
         id=uuid4(),
         product_id=sample_product.id,
@@ -49,7 +54,6 @@ async def test_create_order_expired_reservation(
     )
     db_session.add(res)
     await db_session.commit()
-
     with pytest.raises(ConflictError):
         await OrderService.create_order_from_reservation(
             db_session, sample_buyer, OrderCreate(reservation_id=res.id)
@@ -60,10 +64,10 @@ async def test_create_order_expired_reservation(
 async def test_create_order_already_ordered_reservation(
     db_session: Any, sample_buyer: Any, sample_product: Any, create_test_order: Any
 ) -> None:
+    """Verify order from already-linked reservation raises ConflictError."""
     order = await create_test_order(
         user_id=sample_buyer.id, status=OrderStatus.PENDING, total_amount='50'
     )
-
     res = Reservation(
         id=uuid4(),
         product_id=sample_product.id,
@@ -76,7 +80,6 @@ async def test_create_order_already_ordered_reservation(
     )
     db_session.add(res)
     await db_session.commit()
-
     with pytest.raises(ConflictError):
         await OrderService.create_order_from_reservation(
             db_session, sample_buyer, OrderCreate(reservation_id=res.id)
@@ -87,6 +90,7 @@ async def test_create_order_already_ordered_reservation(
 async def test_create_order_product_not_found(
     db_session: Any, sample_buyer: Any, sample_product: Any
 ) -> None:
+    """Verify order creation with missing reservation product raises NotFoundError."""
     res = Reservation(
         id=uuid4(),
         product_id=sample_product.id,
@@ -99,15 +103,11 @@ async def test_create_order_product_not_found(
     db_session.add(res)
     await db_session.commit()
 
-    # Mock db_session.execute to return None on the second call (when querying Product)
-    from unittest.mock import patch
-
     class MockResult:
         def scalar_one_or_none(self) -> Any:
             return None
 
     original_execute = db_session.execute
-
     call_count = 0
 
     async def mock_execute(stmt: Any, *args: Any, **kwargs: Any) -> Any:
@@ -128,6 +128,7 @@ async def test_create_order_product_not_found(
 async def test_confirm_order_payment_conflict(
     db_session: Any, sample_buyer: Any, create_test_order: Any
 ) -> None:
+    """Verify confirming payment on an already-paid order raises ConflictError."""
     order = await create_test_order(
         user_id=sample_buyer.id, status=OrderStatus.PAID, total_amount='50'
     )
@@ -140,6 +141,7 @@ async def test_confirm_order_payment_conflict(
 async def test_cancel_order_conflict(
     db_session: Any, sample_buyer: Any, create_test_order: Any
 ) -> None:
+    """Verify cancelling an already-cancelled order raises ConflictError."""
     order = await create_test_order(
         user_id=sample_buyer.id, status=OrderStatus.CANCELLED, total_amount='50'
     )

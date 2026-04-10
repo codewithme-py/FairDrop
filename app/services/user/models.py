@@ -30,6 +30,7 @@ class VerificationStatus(StrEnum):
 
 class User(Base):
     __tablename__ = 'users'
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(
         String(EMAIL_MAX_LENGTH), unique=True, nullable=False
@@ -50,6 +51,7 @@ class User(Base):
 
 class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey('users.id', ondelete='CASCADE'), nullable=False
@@ -64,6 +66,7 @@ class RefreshToken(Base):
 
 class APIKeyB2BPartner(Base):
     __tablename__ = 'api_keys_b2b_partners'
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True
@@ -80,6 +83,7 @@ class APIKeyB2BPartner(Base):
 
 class VerificationRequest(Base):
     __tablename__ = 'verification_requests'
+
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True

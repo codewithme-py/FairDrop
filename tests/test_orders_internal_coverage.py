@@ -12,6 +12,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def sample_user(db_session: Any) -> Any:
+    """Create a sample user for orders internal tests."""
     user = User(
         id=uuid4(),
         email=f'test_{uuid4().hex[:4]}@mail.com',
@@ -26,6 +27,7 @@ async def sample_user(db_session: Any) -> Any:
 
 @pytest.fixture
 async def sample_order(db_session: Any, sample_user: Any) -> Any:
+    """Create a sample pending order for orders internal tests."""
     order = Order(
         id=uuid4(),
         user_id=sample_user.id,
@@ -42,6 +44,7 @@ async def sample_order(db_session: Any, sample_user: Any) -> Any:
 async def test_cancel_order_by_system_success(
     db_session: Any, sample_order: Any
 ) -> None:
+    """Verify cancel_order_by_system sets order status to CANCELLED."""
     await cancel_order_by_system(db_session, sample_order.id)
     await db_session.commit()
     await db_session.refresh(sample_order)
@@ -50,5 +53,6 @@ async def test_cancel_order_by_system_success(
 
 @pytest.mark.asyncio
 async def test_cancel_order_by_system_not_found(db_session: Any) -> None:
+    """Verify cancel_order_by_system raises NotFoundError for a nonexistent order."""
     with pytest.raises(NotFoundError):
         await cancel_order_by_system(db_session, uuid4())

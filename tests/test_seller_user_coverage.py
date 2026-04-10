@@ -17,6 +17,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def sample_seller(create_test_user: Any) -> Any:
+    """Create a sample seller user for seller service tests."""
     return await create_test_user(UserRole.SELLER)
 
 
@@ -24,6 +25,7 @@ async def sample_seller(create_test_user: Any) -> Any:
 async def test_seller_get_my_products(
     db_session: AsyncSession, sample_seller: User, create_test_product: Any
 ) -> None:
+    """Verify seller can retrieve their products with optional status filtering."""
     await create_test_product(
         owner_id=sample_seller.id,
         name='P1',
@@ -38,11 +40,8 @@ async def test_seller_get_my_products(
         qty_available=5,
         status=ProductStatus.REJECTED,
     )
-
     all_prods = await get_my_products(db_session, sample_seller.id)
     assert len(all_prods) >= 2
-
-    # Filtered
     active_prods = await get_my_products(
         db_session, sample_seller.id, status=ProductStatus.ACTIVE
     )
@@ -57,6 +56,7 @@ async def test_seller_get_my_orders(
     create_test_product: Any,
     create_test_order: Any,
 ) -> None:
+    """Verify seller orders include items, masked addresses, and filtering."""
     p = await create_test_product(
         owner_id=sample_seller.id,
         name='P1',
@@ -64,12 +64,8 @@ async def test_seller_get_my_orders(
         qty_available=10,
         status=ProductStatus.ACTIVE,
     )
-
-    # Empty
     empty_orders = await get_my_orders(db_session, sample_seller.id)
     assert empty_orders == []
-
-    # With order
     order = await create_test_order(
         user_id=sample_seller.id, status=OrderStatus.PAID, total_amount='50'
     )
@@ -85,12 +81,10 @@ async def test_seller_get_my_orders(
     db_session.add(item)
     db_session.add(order)
     await db_session.commit()
-
     orders = await get_my_orders(db_session, sample_seller.id)
     assert len(orders) >= 1
     assert orders[0].shipping_address == 'Moscow'
     assert len(orders[0].seller_items) == 1
-
     orders_filtered = await get_my_orders(
         db_session, sample_seller.id, status=OrderStatus.PENDING
     )
@@ -104,6 +98,7 @@ async def test_seller_get_my_orders_hidden_address(
     create_test_product: Any,
     create_test_order: Any,
 ) -> None:
+    """Verify seller cannot see shipping addresses for pending orders."""
     p = await create_test_product(
         owner_id=sample_seller.id,
         name='P2',
@@ -111,7 +106,6 @@ async def test_seller_get_my_orders_hidden_address(
         qty_available=10,
         status=ProductStatus.ACTIVE,
     )
-
     order = await create_test_order(
         user_id=sample_seller.id, status=OrderStatus.PENDING, total_amount='50'
     )
@@ -127,7 +121,6 @@ async def test_seller_get_my_orders_hidden_address(
     db_session.add(item)
     db_session.add(order)
     await db_session.commit()
-
     orders = await get_my_orders(db_session, sample_seller.id)
     found = next(o for o in orders if o.id == order.id)
     assert found.shipping_address is None
@@ -140,6 +133,7 @@ async def test_seller_get_my_stats(
     create_test_product: Any,
     create_test_order: Any,
 ) -> None:
+    """Verify seller stats correctly count active products and paid orders."""
     p = await create_test_product(
         owner_id=sample_seller.id,
         name='P3',
@@ -161,7 +155,6 @@ async def test_seller_get_my_stats(
     db_session.add(item)
     db_session.add(order)
     await db_session.commit()
-
     stats = await get_my_stats(db_session, sample_seller.id)
     assert stats.active_products >= 1
     assert stats.paid_orders >= 1

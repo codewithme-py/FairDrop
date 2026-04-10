@@ -25,7 +25,18 @@ async def generate_presigned_get_url(
     expires_in: int = 3600,
 ) -> str:
     """
-    Generates a presigned GET URL for reading private files with host substitution.
+    Generate a presigned GET URL for reading private files with host substitution.
+
+    Normalizes the S3 key by stripping bucket prefixes and internal URL
+    patterns, then generates a time-limited presigned URL.
+
+    Args:
+        s3_client: Aioboto3 S3 client instance.
+        key: Raw S3 object key (may contain bucket prefix or full URL).
+        expires_in: URL expiration time in seconds (default 1 hour).
+
+    Returns:
+        Presigned GET URL with the public S3 endpoint substituted.
     """
     logger.debug(
         'generating s3 url',
@@ -73,7 +84,18 @@ async def get_secure_file_path(
     target_id: UUID,
     doc_key: str | None = None,
 ) -> str | None:
-    """Resolves a secure S3 path from a database resource."""
+    """
+    Resolve a secure S3 file path from a database resource.
+
+    Args:
+        session: Async database session.
+        target_type: Resource type ('verification_doc' or 'product_image').
+        target_id: ID of the resource.
+        doc_key: Optional document key for verification documents.
+
+    Returns:
+        The S3 file path string, or None if the resource is not found.
+    """
     if target_type == 'verification_doc':
         result_v = await session.execute(
             select(VerificationRequest).where(VerificationRequest.id == target_id)
@@ -97,7 +119,7 @@ async def sanitize_image_metadata(
     bucket: str,
     key: str,
 ) -> None:
-    """OBSOLETE: Moved to tasks.py"""
+    """OBSOLETE: Moved to tasks.py. No-op retained for backward compatibility."""
     pass
 
 
@@ -107,6 +129,21 @@ async def generate_upload_url(
     product_id: UUID,
     req: ImageUploadRequest,
 ) -> ImageUploadResponse:
+    """
+    Create a ProductImage record and generate a presigned S3 POST upload URL.
+
+    Args:
+        session: Async database session.
+        s3_client: Aioboto3 S3 client instance.
+        product_id: ID of the product to attach the image to.
+        req: Upload request with filename and content type.
+
+    Returns:
+        Response with the image ID and presigned upload URL/fields.
+
+    Raises:
+        NotFoundError: If the product does not exist.
+    """
     await ensure_product_exists(session, product_id)
     image_id = uuid4()
     file_path = f'products/{product_id}/{image_id}-{req.filename}'
@@ -143,7 +180,18 @@ async def handle_minio_webhook(
     event: MinioWebhookEvent,
     arq_redis: Any = None,
 ) -> None:
-    """Processes MinIO S3:ObjectCreated events with idempotency and robust errors."""
+    """
+    Process MinIO S3:ObjectCreated events with idempotency and robust error handling.
+
+    For each create event, finds the matching ProductImage record in PENDING
+    status and enqueues a sanitization task. Non-create events and already-
+    processed images are skipped.
+
+    Args:
+        session: Async database session.
+        event: Parsed MinIO webhook event containing S3 records.
+        arq_redis: ARQ Redis connection pool for task enqueueing.
+    """
     if not event.records:
         return
     for record in event.records:

@@ -19,6 +19,18 @@ async def get_my_products(
     user_id: UUID,
     status: ProductStatus | None = None,
 ) -> Sequence[Product]:
+    """
+    Fetch all products owned by a seller, optionally filtered by status.
+
+    Args:
+        session: Async database session.
+        user_id: ID of the seller user.
+        status: Optional filter by product lifecycle status.
+
+    Returns:
+        Sequence of Product objects owned by the seller, ordered by
+        creation date descending.
+    """
     stmt = select(Product).where(Product.owner_id == user_id)
     if status:
         stmt = stmt.where(Product.status == status)
@@ -32,6 +44,20 @@ async def get_my_orders(
     user_id: UUID,
     status: OrderStatus | None = None,
 ) -> list[SellerOrderRead]:
+    """
+    Fetch orders that contain the seller's products.
+
+    Only the seller's line items are included in each order. Shipping addresses
+    are hidden for pending, failed, or cancelled orders.
+
+    Args:
+        session: Async database session.
+        user_id: ID of the seller user.
+        status: Optional filter by order status.
+
+    Returns:
+        List of SellerOrderRead objects with only the seller's items populated.
+    """
     order_id_stmt = (
         select(Order.id)
         .join(OrderItem, OrderItem.order_id == Order.id)
@@ -88,6 +114,16 @@ async def get_my_stats(
     session: AsyncSession,
     user_id: UUID,
 ) -> SellerStats:
+    """
+    Aggregate product and order statistics for a seller.
+
+    Args:
+        session: Async database session.
+        user_id: ID of the seller user.
+
+    Returns:
+        SellerStats with counts for products and orders broken down by status.
+    """
     prod_stmt = (
         select(
             Product.status,

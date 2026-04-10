@@ -13,6 +13,7 @@ from app.services.user.models import User, UserRole
 
 @pytest.fixture
 async def sample_seller(db_session: Any) -> Any:
+    """Create a sample seller user for inventory service tests."""
     u = User(
         id=uuid4(),
         email=f'seller_{uuid4().hex}@mail.com',
@@ -27,6 +28,7 @@ async def sample_seller(db_session: Any) -> Any:
 
 @pytest.fixture
 async def sample_moderator(db_session: Any) -> Any:
+    """Create a sample moderator user for inventory admin service tests."""
     u = User(
         id=uuid4(),
         email=f'mod_{uuid4().hex}@mail.com',
@@ -41,6 +43,7 @@ async def sample_moderator(db_session: Any) -> Any:
 
 @pytest.fixture
 async def sample_product(db_session: Any, sample_seller: Any) -> Any:
+    """Create an active product for inventory service tests."""
     p = Product(
         id=uuid4(),
         owner_id=sample_seller.id,
@@ -57,6 +60,7 @@ async def sample_product(db_session: Any, sample_seller: Any) -> Any:
 
 @pytest.fixture
 async def draft_product(db_session: Any, sample_seller: Any) -> Any:
+    """Create a draft product for inventory admin conflict tests."""
     p = Product(
         id=uuid4(),
         owner_id=sample_seller.id,
@@ -75,6 +79,7 @@ async def draft_product(db_session: Any, sample_seller: Any) -> Any:
 async def test_submit_for_moderation_conflict(
     db_session: Any, sample_product: Any, sample_seller: Any
 ) -> None:
+    """Verify submitting active product for moderation raises ConflictError."""
     with pytest.raises(ConflictError):
         await InventoryService.submit_for_moderation(
             db_session, sample_product.id, sample_seller
@@ -85,6 +90,7 @@ async def test_submit_for_moderation_conflict(
 async def test_reserve_items_product_not_found(
     db_session: Any, sample_seller: Any
 ) -> None:
+    """Verify reserving items for nonexistent product raises NotFoundError."""
     res_data = ReservationCreate(product_id=uuid4(), quantity=1)
     with pytest.raises(NotFoundError):
         await InventoryService.reserve_items(
@@ -96,6 +102,7 @@ async def test_reserve_items_product_not_found(
 async def test_claim_for_moderation_conflict(
     db_session: Any, sample_product: Any, sample_moderator: Any
 ) -> None:
+    """Verify claiming an active product for moderation raises ConflictError."""
     with pytest.raises(ConflictError):
         await InventoryAdminService.claim_for_moderation(
             db_session, sample_product.id, sample_moderator
@@ -106,6 +113,7 @@ async def test_claim_for_moderation_conflict(
 async def test_approve_product_conflict(
     db_session: Any, draft_product: Any, sample_moderator: Any
 ) -> None:
+    """Verify approving a draft product (not in moderation) raises ConflictError."""
     with pytest.raises(ConflictError):
         await InventoryAdminService.approve_product(
             db_session, draft_product.id, sample_moderator
@@ -116,6 +124,7 @@ async def test_approve_product_conflict(
 async def test_reject_product_conflict(
     db_session: Any, draft_product: Any, sample_moderator: Any
 ) -> None:
+    """Verify rejecting a draft product (not in moderation) raises ConflictError."""
     with pytest.raises(ConflictError):
         await InventoryAdminService.reject_product(
             db_session, draft_product.id, sample_moderator, 'bad product'

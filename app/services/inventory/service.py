@@ -28,9 +28,26 @@ from app.services.user.models import User, UserRole
 
 
 class InventoryService:
+    """
+    Service class for product CRUD and reservation operations.
+
+    All public methods are static and handle core inventory management
+    including seller limits, moderation workflow, and stock reservation.
+    """
+
     @staticmethod
     async def _check_seller_limit(session: AsyncSession, user: User) -> None:
-        """Check if the user has exceeded their product listing limit."""
+        """
+        Check if the user has exceeded their product listing limit.
+
+        Args:
+            session: Async database session.
+            user: User whose limits should be checked.
+
+        Raises:
+            SellerLimitExceededError: If the user has reached their
+                maximum product count.
+        """
         if user.role in (UserRole.ADMIN, UserRole.MODERATOR):
             return
         query = select(Product).where(Product.owner_id == user.id)
@@ -51,6 +68,22 @@ class InventoryService:
         for_update: bool = False,
         current_user: User | None = None,
     ) -> Product:
+        """
+        Fetch a product by ID with optional row locking and ownership check.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to fetch.
+            for_update: If True, acquire a row-level lock for updates.
+            current_user: Optional user for ownership verification.
+
+        Returns:
+            The Product instance.
+
+        Raises:
+            NotFoundError: If the product does not exist.
+            PermissionDeniedError: If current_user does not own the product.
+        """
         query = select(Product).where(Product.id == product_id)
         if for_update:
             query = query.with_for_update()
@@ -73,6 +106,17 @@ class InventoryService:
         action: str,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        """
+        Record an audit log entry for a product state change.
+
+        Args:
+            session: Async database session.
+            user: User who performed the action.
+            product: The modified product instance.
+            old_snapshot: Product state before the change.
+            action: Type of action (e.g., 'create', 'update', 'delete').
+            metadata: Optional additional context data.
+        """
         await audit_log_service.log_object_change(
             session=session,
             actor_id=user.id,
@@ -88,6 +132,22 @@ class InventoryService:
     async def submit_for_moderation(
         session: AsyncSession, product_id: UUID, current_user: User
     ) -> Product:
+        """
+        Submit a product for admin moderation.
+
+        Only products in DRAFT or REJECTED status can be submitted.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to submit.
+            current_user: Authenticated user (must own the product).
+
+        Returns:
+            The product with status set to PENDING_MODERATION.
+
+        Raises:
+            ConflictError: If the product is not in DRAFT or REJECTED status.
+        """
         product_under_moderation = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
         )
@@ -119,6 +179,21 @@ class InventoryService:
         product_data: ProductCreate,
         current_user: User,
     ) -> Product:
+        """
+        Create a new product for a seller after verifying listing limits.
+
+        Args:
+            session: Async database session.
+            owner_id: ID of the product owner.
+            product_data: Creation payload with name, price, etc.
+            current_user: Authenticated seller user.
+
+        Returns:
+            The newly created product.
+
+        Raises:
+            SellerLimitExceededError: If the seller has reached their product limit.
+        """
         await InventoryService._check_seller_limit(session, current_user)
         new_product = Product(**product_data.model_dump())
         new_product.owner_id = owner_id
@@ -142,6 +217,25 @@ class InventoryService:
         product_data: ProductUpdate,
         current_user: User,
     ) -> Product:
+        """
+        Update an existing product's attributes.
+
+        Modifying an active product automatically sets it to PENDING_MODERATION.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to update.
+            product_data: Partial payload with fields to update.
+            current_user: Authenticated user (must own the product).
+
+        Returns:
+            The updated product.
+
+        Raises:
+            ConflictError: If the product is currently under moderation.
+            NotFoundError: If the product does not exist.
+            PermissionDeniedError: If the user does not own the product.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
         )
@@ -173,6 +267,18 @@ class InventoryService:
         product_id: UUID,
         current_user: User,
     ) -> None:
+        """
+        Permanently delete a product.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to delete.
+            current_user: Authenticated user (must own the product).
+
+        Raises:
+            NotFoundError: If the product does not exist.
+            PermissionDeniedError: If the user does not own the product.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True, current_user=current_user
         )
@@ -188,6 +294,19 @@ class InventoryService:
 
     @staticmethod
     async def get_product(session: AsyncSession, product_id: UUID) -> Product:
+        """
+        Retrieve a single product by ID with images eagerly loaded.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to retrieve.
+
+        Returns:
+            The Product instance with images.
+
+        Raises:
+            NotFoundError: If the product does not exist.
+        """
         product = await InventoryService._get_product(session, product_id)
         return product
 
@@ -198,6 +317,18 @@ class InventoryService:
         skip: int = 0,
         limit: int = 50,
     ) -> list[Product]:
+        """
+        List products with optional status filter and pagination.
+
+        Args:
+            session: Async database session.
+            status: Filter by product status; if None, returns all products.
+            skip: Number of records to skip (offset).
+            limit: Maximum number of records to return.
+
+        Returns:
+            List of products with images eagerly loaded.
+        """
         query = select(Product).options(joinedload(Product.images))
         if status:
             query = query.where(Product.status == status)
@@ -211,6 +342,26 @@ class InventoryService:
         idempotency_key: str,
         reservation_data: ReservationCreate,
     ) -> Reservation:
+        """
+        Reserve stock for a user against a specific product.
+
+        Decrements available quantity and creates a Reservation record with
+        an expiration time.
+
+        Args:
+            session: Async database session.
+            user_id: ID of the reserving user.
+            idempotency_key: Unique key to prevent duplicate reservations.
+            reservation_data: Payload containing product_id and quantity.
+
+        Returns:
+            The newly created Reservation.
+
+        Raises:
+            NotFoundError: If the product does not exist.
+            InsufficientInventoryError: If available stock is insufficient.
+            ConflictError: If the idempotency key is already used.
+        """
         result = await session.execute(
             select(Product)
             .with_for_update()
@@ -244,6 +395,13 @@ class InventoryService:
 
 
 class InventoryAdminService(InventoryService):
+    """
+    Extended inventory service with admin-level moderation operations.
+
+    Inherits all base inventory operations and adds methods for the
+    product moderation workflow (claim, approve, reject, status change).
+    """
+
     @staticmethod
     async def change_status(
         session: AsyncSession,
@@ -251,6 +409,21 @@ class InventoryAdminService(InventoryService):
         status: ProductStatus,
         current_user: User,
     ) -> Product:
+        """
+        Directly change a product's status (admin override).
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to modify.
+            status: New status to set.
+            current_user: Admin user performing the action.
+
+        Returns:
+            The updated product.
+
+        Raises:
+            NotFoundError: If the product does not exist.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True
         )
@@ -271,6 +444,20 @@ class InventoryAdminService(InventoryService):
     async def claim_for_moderation(
         session: AsyncSession, product_id: UUID, moderator_user: User
     ) -> Product:
+        """
+        Claim a product for moderation, assigning it to the current moderator.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to claim.
+            moderator_user: Admin or moderator user claiming the product.
+
+        Returns:
+            The product with status MODERATION_IN_PROGRESS and moderator_id set.
+
+        Raises:
+            ConflictError: If the product is not in PENDING_MODERATION status.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True
         )
@@ -294,6 +481,20 @@ class InventoryAdminService(InventoryService):
     async def approve_product(
         session: AsyncSession, product_id: UUID, moderator_user: User
     ) -> Product:
+        """
+        Approve a product under moderation, setting its status to ACTIVE.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to approve.
+            moderator_user: Admin or moderator user approving the product.
+
+        Returns:
+            The product with status ACTIVE and moderator_id cleared.
+
+        Raises:
+            ConflictError: If the product is not in MODERATION_IN_PROGRESS status.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True
         )
@@ -320,6 +521,21 @@ class InventoryAdminService(InventoryService):
         moderator_user: User,
         reason: str,
     ) -> Product:
+        """
+        Reject a product under moderation, providing a reason to the seller.
+
+        Args:
+            session: Async database session.
+            product_id: ID of the product to reject.
+            moderator_user: Admin or moderator user rejecting the product.
+            reason: Explanation for the rejection.
+
+        Returns:
+            The product with status REJECTED and moderator_id cleared.
+
+        Raises:
+            ConflictError: If the product is not in MODERATION_IN_PROGRESS status.
+        """
         product = await InventoryService._get_product(
             session, product_id, for_update=True
         )

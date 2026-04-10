@@ -18,6 +18,7 @@ async def test_update_product_status_logic(
     create_test_user: Callable,
     create_test_product: Callable,
 ) -> None:
+    """Verify product updates blocked during moderation trigger re-moderation."""
     user = await create_test_user(role=UserRole.SELLER, email_prefix='harden')
     user_id = user.id
     token = create_access_token({'sub': user.email, 'role': user.role})

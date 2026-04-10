@@ -10,6 +10,16 @@ from app.services.orders.models import OrderStatus
 
 
 async def release_expired_reservations(ctx: dict) -> None:
+    """
+    Find and release all expired reservations, returning stock to products.
+
+    This is a periodic background task that scans for reservations past their
+    expiration date, cancels them, restores inventory, and cancels any
+    associated orders.
+
+    Args:
+        ctx: Task context dictionary containing 'session_maker' for database access.
+    """
     session_maker: async_sessionmaker = ctx['session_maker']
     async with session_maker() as session:
         expired_reservations = await session.execute(

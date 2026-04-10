@@ -45,10 +45,23 @@ class Settings(BaseSettings):
 
     @computed_field
     def database_url(self) -> str:
+        """
+        Construct the full async PostgreSQL database URL.
+
+        Returns:
+            The database connection string with user, password, host, port,
+            and name.
+        """
         return f'postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}'
 
     @computed_field
     def database_url_masked(self) -> str:
+        """
+        Construct the database URL with the password masked for logging purposes.
+
+        Returns:
+            The database connection string with the password replaced by ``****``.
+        """
         return f'postgresql+asyncpg://{self.db_user}:****@{self.db_host}:{self.db_port}/{self.db_name}'
 
 

@@ -11,6 +11,7 @@ from app.services.user.models import User
 
 @pytest.mark.asyncio
 async def test_auth_debug_raw(db_session: Any, admin_headers: Any) -> None:
+    """Verify the admin JWT token decodes to a valid user in the database."""
     token = admin_headers['Authorization'].split(' ')[1]
     payload = jwt.decode(
         token, settings.secret_key, algorithms=[settings.jwt_algorithm]
@@ -25,6 +26,7 @@ async def test_auth_debug_raw(db_session: Any, admin_headers: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_auth_via_client(async_client: Any, admin_headers: Any) -> None:
+    """Verify admin can access protected user endpoints via HTTP client."""
     resp = await async_client.get('/api/v1/users/me', headers=admin_headers)
     print(f'[DEBUG] Response status: {resp.status_code}')
     print(f'[DEBUG] Response body: {resp.text}')

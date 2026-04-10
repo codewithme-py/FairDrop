@@ -39,6 +39,8 @@ from app.services.user.service import UserService
 
 
 class DeterministicMockSession:
+    """Deterministic mock session with predefined responses and integrity errors."""
+
     def __init__(self, responses: Any = None, raise_integrity: bool = False) -> None:
         self.responses = deque(responses or [])
         self.raise_integrity = raise_integrity
@@ -87,6 +89,7 @@ class DeterministicMockSession:
 
 
 def get_p(u_id: Any) -> Product:
+    """Create a draft product for the given user ID in industrial tests."""
     return Product(
         id=uuid4(),
         owner_id=u_id,
@@ -101,6 +104,7 @@ def get_p(u_id: Any) -> Product:
 
 @pytest.mark.asyncio
 async def test_inventory_industrial_GIGA() -> None:
+    """Inventory test: CRUD, moderation, reservation, and limits."""
     u_id = uuid4()
     seller = User(id=u_id, role=UserRole.SELLER, is_verified=True)
     admin = User(id=uuid4(), role=UserRole.ADMIN)
@@ -197,6 +201,7 @@ async def test_inventory_industrial_GIGA() -> None:
 
 @pytest.mark.asyncio
 async def test_orders_industrial_GIGA() -> None:
+    """Order test: creation, payment, cancellation, and admin access."""
     u_id, p_id = uuid4(), uuid4()
     usr = User(id=u_id)
     p = get_p(u_id)
@@ -261,6 +266,7 @@ async def test_orders_industrial_GIGA() -> None:
 
 @pytest.mark.asyncio
 async def test_user_industrial_GIGA() -> None:
+    """Comprehensive user test covering registration, auth, tokens, and API keys."""
     u_id = uuid4()
     usr = User(id=u_id, email='u@t.com', password_hash='h')
     tok = RefreshToken(user=usr, expires_at=datetime.utcnow() + timedelta(days=1))

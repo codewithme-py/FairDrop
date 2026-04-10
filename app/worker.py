@@ -9,7 +9,18 @@ from app.services.media.tasks import sanitize_and_activate_image_task
 
 
 async def startup(ctx: dict) -> None:
-    """Initialize resources for the worker."""
+    """
+    Initialize resources for the ARQ worker.
+
+    Creates an async database engine and session maker, storing them in the
+    worker context for use by task functions.
+
+    Args:
+        ctx: The ARQ worker context dictionary.
+
+    Raises:
+        Exception: If database engine creation fails.
+    """
     try:
         engine = create_async_engine(
             str(settings.database_url),
@@ -27,7 +38,14 @@ async def startup(ctx: dict) -> None:
 
 
 async def shutdown(ctx: dict) -> None:
-    """Cleanup resources on worker shutdown."""
+    """
+    Clean up resources when the ARQ worker shuts down.
+
+    Disposes the database engine if it was created during startup.
+
+    Args:
+        ctx: The ARQ worker context dictionary.
+    """
     if 'session_maker' in ctx:
         engine = ctx['session_maker'].kw['bind']
         await engine.dispose()
@@ -35,6 +53,19 @@ async def shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings(RedisSettings):
+    """
+    ARQ worker configuration.
+
+    Includes Redis connection, lifecycle hooks, and scheduled jobs.
+
+    Attributes:
+        redis_settings: Redis connection settings derived from application config.
+        on_startup: Coroutine called when the worker starts.
+        on_shutdown: Coroutine called when the worker stops.
+        cron_jobs: List of scheduled cron jobs (e.g., releasing expired reservations).
+        functions: List of task functions available to the worker.
+    """
+
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     on_startup = startup
     on_shutdown = shutdown

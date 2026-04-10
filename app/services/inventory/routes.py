@@ -53,7 +53,16 @@ ADMIN_AND_SELLER_DEPENDENCY = Depends(
 
 
 async def _enrich_product_images(product: Any, s3_client: Any) -> ProductRead:
-    """Helper to generate presigned URLs for product images."""
+    """
+    Generate presigned URLs for a product's images and attach them to the response.
+
+    Args:
+        product: SQLAlchemy Product instance with loaded images relationship.
+        s3_client: S3 client for generating presigned URLs.
+
+    Returns:
+        ProductRead schema with image_urls populated.
+    """
     read_obj = ProductRead.model_validate(product)
     image_urls = []
     if hasattr(product, 'images'):
@@ -73,6 +82,19 @@ async def get_active_products(
     skip: int = 0,
     limit: int = 50,
 ) -> list[ProductRead]:
+    """
+    List active products available for purchase with pagination.
+
+    Args:
+        session: Async database session.
+        service: Inventory service instance.
+        s3_client: S3 client for generating image URLs.
+        skip: Number of records to skip (offset).
+        limit: Maximum number of records to return.
+
+    Returns:
+        Paginated list of active products with presigned image URLs.
+    """
     products = await service.get_products(
         status=ProductStatus.ACTIVE,
         skip=skip,
@@ -89,6 +111,18 @@ async def create_product(
     current_user: Annotated[User, SELLER_DEPENDENCY],
     service: Annotated[InventoryService, Depends(get_inventory_service)],
 ) -> ProductRead:
+    """
+    Create a new product as a seller.
+
+    Args:
+        product_data: Product creation payload.
+        session: Async database session.
+        current_user: Authenticated seller user.
+        service: Inventory service instance.
+
+    Returns:
+        The created product with assigned ID and timestamps.
+    """
     product = await service.create_product(
         current_user=current_user,
         session=session,
@@ -105,6 +139,18 @@ async def activate_product(
     current_user: Annotated[User, ADMIN_DEPENDENCY],
     service: Annotated[InventoryAdminService, Depends(get_inventory_admin_service)],
 ) -> ProductRead:
+    """
+    Activate a product, making it visible and purchasable (admin only).
+
+    Args:
+        product_id: ID of the product to activate.
+        session: Async database session.
+        current_user: Authenticated admin user.
+        service: Inventory admin service instance.
+
+    Returns:
+        The updated product with ACTIVE status.
+    """
     product = await service.change_status(
         session=session,
         product_id=product_id,
@@ -122,6 +168,21 @@ async def update_product(
     current_user: Annotated[User, ADMIN_AND_SELLER_DEPENDENCY],
     service: Annotated[InventoryService, Depends(get_inventory_service)],
 ) -> ProductRead:
+    """
+    Update product details. Only the owner or an admin can modify a product.
+
+    Updating an active product will automatically revert it to PENDING_MODERATION.
+
+    Args:
+        product_id: ID of the product to update.
+        product_data: Fields to update (partial payload).
+        session: Async database session.
+        current_user: Authenticated seller or admin user.
+        service: Inventory service instance.
+
+    Returns:
+        The updated product.
+    """
     product = await service.update_product(
         session=session,
         product_id=product_id,
@@ -138,6 +199,15 @@ async def delete_product(
     current_user: Annotated[User, ADMIN_DEPENDENCY],
     service: Annotated[InventoryService, Depends(get_inventory_service)],
 ) -> None:
+    """
+    Delete a product permanently (admin only).
+
+    Args:
+        product_id: ID of the product to delete.
+        session: Async database session.
+        current_user: Authenticated admin user.
+        service: Inventory service instance.
+    """
     await service.delete_product(
         session=session,
         product_id=product_id,
@@ -152,6 +222,21 @@ async def get_product(
     service: Annotated[InventoryService, Depends(get_inventory_service)],
     s3_client: Any = Depends(get_s3_client_gen),
 ) -> ProductRead:
+    """
+    Retrieve a single product by ID with presigned image URLs.
+
+    Args:
+        product_id: ID of the product to retrieve.
+        session: Async database session.
+        service: Inventory service instance.
+        s3_client: S3 client for generating image URLs.
+
+    Returns:
+        Product details with presigned image URLs.
+
+    Raises:
+        NotFoundError: If the product does not exist.
+    """
     product = await service.get_product(
         session=session,
         product_id=product_id,
@@ -169,6 +254,28 @@ async def reservation_data(
     service: Annotated[InventoryService, Depends(get_inventory_service)],
     x_idempotency_key: str = Header(...),
 ) -> ReservationResponse:
+    """
+    Reserve stock for a specific product.
+
+    Requires authentication and idempotency key. This endpoint is
+    rate-limited per user and per product.
+
+    Args:
+        request: FastAPI request object for rate limiting.
+        reservation_data: Reservation payload with product ID and quantity.
+        session: Async database session.
+        current_user: Authenticated user making the reservation.
+        service: Inventory service instance.
+        x_idempotency_key: Idempotency key to prevent duplicate reservations.
+
+    Returns:
+        Created reservation details including expiration time.
+
+    Raises:
+        NotFoundError: If the product does not exist.
+        InsufficientInventoryError: If requested quantity exceeds available stock.
+        ConflictError: If the idempotency key is already used.
+    """
     await check_rate_limit(
         rate_limit_script=request.app.state.rate_limit_script,
         keys=[
@@ -193,6 +300,23 @@ async def submit_for_moderation(
     current_user: Annotated[User, SELLER_DEPENDENCY],
     service: Annotated[InventoryService, Depends(get_inventory_service)],
 ) -> ProductRead:
+    """
+    Submit a product for admin moderation.
+
+    Only DRAFT or REJECTED products can be submitted.
+
+    Args:
+        product_id: ID of the product to submit.
+        session: Async database session.
+        current_user: Authenticated seller user (must own the product).
+        service: Inventory service instance.
+
+    Returns:
+        The product with status set to PENDING_MODERATION.
+
+    Raises:
+        ConflictError: If the product is not in DRAFT or REJECTED status.
+    """
     product = await service.submit_for_moderation(
         session=session,
         product_id=product_id,
@@ -208,6 +332,21 @@ async def approve_product(
     current_user: Annotated[User, ADMIN_DEPENDENCY],
     service: Annotated[InventoryAdminService, Depends(get_inventory_admin_service)],
 ) -> ProductRead:
+    """
+    Approve a product under moderation, making it active (admin/moderator only).
+
+    Args:
+        product_id: ID of the product to approve.
+        session: Async database session.
+        current_user: Authenticated admin or moderator user.
+        service: Inventory admin service instance.
+
+    Returns:
+        The product with status set to ACTIVE.
+
+    Raises:
+        ConflictError: If the product is not in MODERATION_IN_PROGRESS status.
+    """
     product = await service.approve_product(
         session=session,
         product_id=product_id,
@@ -224,6 +363,22 @@ async def reject_product(
     service: Annotated[InventoryAdminService, Depends(get_inventory_admin_service)],
     reason: str = Query(...),
 ) -> ProductRead:
+    """
+    Reject a product under moderation with a reason (admin/moderator only).
+
+    Args:
+        product_id: ID of the product to reject.
+        session: Async database session.
+        current_user: Authenticated admin or moderator user.
+        service: Inventory admin service instance.
+        reason: Rejection reason provided to the seller.
+
+    Returns:
+        The product with status set to REJECTED.
+
+    Raises:
+        ConflictError: If the product is not in MODERATION_IN_PROGRESS status.
+    """
     product = await service.reject_product(
         session=session,
         product_id=product_id,
@@ -240,6 +395,21 @@ async def claim_for_moderation(
     current_user: Annotated[User, ADMIN_DEPENDENCY],
     service: Annotated[InventoryAdminService, Depends(get_inventory_admin_service)],
 ) -> ProductRead:
+    """
+    Claim a product for moderation, assigning it to the current admin/moderator.
+
+    Args:
+        product_id: ID of the product to claim.
+        session: Async database session.
+        current_user: Authenticated admin or moderator user.
+        service: Inventory admin service instance.
+
+    Returns:
+        The product with status set to MODERATION_IN_PROGRESS and moderator_id assigned.
+
+    Raises:
+        ConflictError: If the product is not in PENDING_MODERATION status.
+    """
     product = await service.claim_for_moderation(
         session=session,
         product_id=product_id,

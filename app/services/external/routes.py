@@ -23,6 +23,16 @@ async def fetch_catalog(
     session: AsyncSession = Depends(get_session),
     current_partner: User = Depends(get_api_key_user),
 ) -> list[ExternalProductRead]:
+    """
+    Retrieve the active product catalog for an authenticated B2B partner.
+
+    Args:
+        session: Async database session.
+        current_partner: Partner user authenticated via API key.
+
+    Returns:
+        List of active products with name, price, and available quantity.
+    """
     products = await get_external_catalog(session)
     return [ExternalProductRead.model_validate(p) for p in products]
 
@@ -33,6 +43,20 @@ async def fetch_order_status(
     session: AsyncSession = Depends(get_session),
     current_partner: User = Depends(get_api_key_user),
 ) -> ExternalOrderResponse:
+    """
+    Retrieve the status of a specific order owned by the authenticated partner.
+
+    Args:
+        order_id: Unique identifier of the order.
+        session: Async database session.
+        current_partner: Partner user authenticated via API key.
+
+    Returns:
+        Order status and last-updated timestamp.
+
+    Raises:
+        HTTPException: 404 if the order is not found or the partner lacks access.
+    """
     order = await get_external_order_status(session, current_partner.id, order_id)
     if not order:
         raise HTTPException(

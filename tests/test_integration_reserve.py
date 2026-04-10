@@ -11,6 +11,7 @@ from app.services.inventory.models import Product
 async def test_reserve_flow(
     async_client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """Verify reservation flow: idempotent re-use and rate limiting."""
     test_email = f'{uuid4().hex[:8]}@example.com'
     test_password = 'super_secret_password'
     test_product_id = uuid4()
@@ -20,7 +21,6 @@ async def test_reserve_flow(
     )
     assert test_user_res.status_code == HTTPStatus.CREATED
     created_user_id = UUID(test_user_res.json()['id'])
-
     test_product = Product(
         id=test_product_id,
         owner_id=created_user_id,
@@ -73,5 +73,4 @@ async def test_reserve_flow(
 
     responses = await asyncio.gather(*(make_request() for _ in range(50)))
     status_codes = [r.status_code for r in responses]
-
     assert HTTPStatus.TOO_MANY_REQUESTS in status_codes

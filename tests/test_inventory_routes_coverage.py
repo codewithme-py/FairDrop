@@ -17,6 +17,7 @@ async def test_inventory_routes_full_coverage(
     seller_headers: dict,
     create_test_product: Callable,
 ) -> None:
+    """Verify full inventory lifecycle: create, claim, reject, approve, delete."""
     resp = await async_client.post(
         '/api/v1/inventory/',
         json={

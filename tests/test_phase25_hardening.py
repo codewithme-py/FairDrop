@@ -16,6 +16,8 @@ from app.services.orders.models import OrderStatus
 
 
 class SimpleMockSession:
+    """A deterministic mock session that returns predefined responses in order."""
+
     def __init__(self, responses: Any = None) -> None:
         self.responses = deque(responses or [])
         self.committed = False

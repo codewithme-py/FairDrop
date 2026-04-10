@@ -23,6 +23,15 @@ from .exceptions import (
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
+    """
+    Register custom exception handlers on the FastAPI application.
+
+    Maps each application-specific exception class to its corresponding
+    HTTP response handler, ensuring consistent error responses.
+
+    Args:
+        app: The FastAPI application instance.
+    """
     app.add_exception_handler(UserAlreadyExists, user_already_exists_handler)  # type: ignore[arg-type]
     app.add_exception_handler(CredentialsError, credentials_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(ConflictError, conflict_error_handler)  # type: ignore[arg-type]
